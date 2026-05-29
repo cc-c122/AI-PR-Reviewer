@@ -1,36 +1,65 @@
 # AI PR Reviewer
 
-AI PR Reviewer is an AI-assisted GitHub Pull Request review tool. It fetches PR changes, builds review context, identifies risky code, and produces structured review suggestions.
-
-## Current Status
-
-The backend MVP can create an analysis task from a public GitHub PR URL, parse
-`owner/repo/pullNumber`, fetch PR metadata through Octokit, fetch changed files,
-return a structured PR snapshot, and generate an `AnalysisReport` with summary,
-risk level, and initial findings. It uses a deterministic mock model when
-`OPENAI_API_KEY` is not configured, and switches to an OpenAI-compatible review
-model provider when the key is present.
+**AI PR Reviewer** 是一个面向 GitHub Pull Request 的 AI 代码评审工具。它可以读取 PR 变更，生成 PR 总结、风险等级和结构化 Review findings，帮助开发者更快理解改动、定位高风险代码，并形成可执行的评审建议。
 
 ## Live Demo
 
-[Open the GitHub Pages demo](https://cc-c122.github.io/AI-PR-Reviewer/)
+[立即体验 GitHub Pages Demo](https://cc-c122.github.io/AI-PR-Reviewer/)
 
-The GitHub Pages build runs in static demo mode, so it does not require a
-backend server, credit card, GitHub token, or OpenAI key. It shows the end-to-end
-review workflow with deterministic sample findings.
+GitHub Pages Demo 是**静态演示模式**：
 
-## Planned Stack
+- 不需要后端
+- 不需要银行卡
+- 不需要 GitHub Token
+- 不需要 OpenAI Key
+- 使用浏览器内置 mock 数据展示完整评审流程
 
-- React + Vite + TypeScript for the web app
-- Fastify + TypeScript for the API
-- Octokit for GitHub integration
-- Zod for runtime validation
-- Prisma + SQLite for local persistence
-- OpenAI-compatible model providers for review analysis
+这个 Demo 适合快速查看产品交互、报告结构和 Review 工作流。完整的 GitHub PR 获取、数据库持久化和真实模型调用需要在本地完整模式或服务端部署模式下运行。
 
-## Development
+## 功能特性
 
-Install dependencies once Node.js and pnpm are available:
+- **PR 变更总结**：概括 PR 目的、变更规模、关键文件和基础风险。
+- **风险代码识别**：根据 changed files、diff 信号和路径特征识别潜在风险。
+- **Review 建议生成**：输出结构化 findings，包括证据、建议和是否阻塞合并。
+- **严重级别和置信度**：支持 `critical`、`major`、`minor`、`info` 以及 confidence 标注。
+- **本地持久化**：使用 Prisma + SQLite 保存分析任务、PR Snapshot 和报告。
+- **GitHub Pages 静态 Demo**：无需任何密钥即可体验完整页面流程。
+
+## 本地完整模式
+
+本地完整模式支持真实分析公开 GitHub PR：
+
+- 输入公开 GitHub PR URL
+- 后端通过 Octokit 获取 PR 元数据和 changed files
+- 生成 PR 总结、风险等级和 Review findings
+- Prisma + SQLite 持久化任务和报告
+- 配置 `OPENAI_API_KEY` 时使用真实 OpenAI-compatible provider
+- 没有 key 时自动使用 `MockReviewModelClient`
+
+## 技术栈
+
+- React
+- Vite
+- TypeScript
+- Fastify
+- Prisma
+- SQLite
+- Octokit
+- Zod
+- OpenAI-compatible provider
+
+## 架构流程
+
+```mermaid
+flowchart LR
+  A["用户输入 PR URL"] --> B["API 获取 GitHub PR"]
+  B --> C["生成 PullRequestSnapshot"]
+  C --> D["风险分析"]
+  D --> E["模型或 Mock 生成报告"]
+  E --> F["前端展示 Summary / Risk / Findings"]
+```
+
+## 本地运行
 
 ```bash
 pnpm install
@@ -40,32 +69,13 @@ pnpm prisma:migrate --name init
 pnpm dev
 ```
 
-The API starts on `http://localhost:4000` by default and the web app starts on
-`http://localhost:5173`.
+默认地址：
 
-For a single-process production-style local run:
+- Web: `http://localhost:5173`
+- API: `http://localhost:4000`
+- Health Check: `http://localhost:4000/api/health`
 
-```bash
-pnpm render:build
-$env:NODE_ENV="production"; $env:DATABASE_URL="file:./demo.db"; pnpm render:start
-```
-
-Open `http://localhost:4000` for the web UI and `http://localhost:4000/api/health`
-for the API health check.
-
-`render:start` prefers `prisma migrate deploy` and falls back to applying the
-checked-in SQLite schema directly if Prisma's schema engine is unavailable in a
-constrained runtime.
-
-Create an analysis task directly:
-
-```bash
-curl -X POST http://localhost:4000/api/analysis-tasks \
-  -H "Content-Type: application/json" \
-  -d "{\"pullRequestUrl\":\"https://github.com/owner/repo/pull/123\"}"
-```
-
-Run verification:
+## 验证命令
 
 ```bash
 pnpm typecheck
@@ -74,43 +84,23 @@ pnpm test
 pnpm build
 ```
 
-## Database
+## 环境变量
 
-Local persistence uses Prisma with SQLite. The default `DATABASE_URL` in
-`.env.example` points at `file:./dev.db`; when Prisma commands are run from the
-repository root, the SQLite file is created under `prisma/dev.db`.
+复制 `.env.example` 为 `.env` 后按需配置：
 
-Useful commands:
+| 变量 | 说明 |
+| --- | --- |
+| `GITHUB_TOKEN` | 可选。公开 PR 不配置也可使用；配置后 GitHub API rate limit 更高。 |
+| `OPENAI_API_KEY` | 可选。配置后启用真实 OpenAI-compatible provider；不配置时使用 mock。 |
+| `OPENAI_MODEL` | 可选。模型名，默认 `gpt-4o-mini`。 |
+| `OPENAI_BASE_URL` | 可选。OpenAI-compatible API 地址，默认 `https://api.openai.com/v1`。 |
+| `DATABASE_URL` | SQLite 数据库地址，默认可使用 `file:./dev.db`。 |
+| `API_PORT` | API 端口，默认 `4000`。 |
+| `WEB_PORT` | Vite Web 端口，默认 `5173`。 |
+| `NODE_ENV` | 设置为 `production` 时，Fastify 可服务前端构建产物。 |
 
-```bash
-pnpm prisma:generate
-pnpm prisma:migrate --name init
-pnpm prisma:studio
-```
+项目不会把 GitHub Token、OpenAI Key 或完整请求 headers 存入数据库。
 
-Generated SQLite database files are git ignored. Analysis tasks persist the task
-metadata, PR snapshot, changed-file JSON, report summary, risk level, and
-finding JSON. GitHub tokens, OpenAI keys, and request headers are not stored.
+## 部署
 
-## Environment Variables
-
-Copy `.env.example` to `.env` before local development.
-
-- `GITHUB_TOKEN`: Optional GitHub token. Public PRs work without it, but setting
-  a token gives higher rate limits and enables access allowed by that token.
-- `API_PORT`: API port. Defaults to `4000`.
-- `WEB_PORT`: Vite web port. Defaults to `5173`.
-- `DATABASE_URL`: Reserved for persistence. Defaults to SQLite local dev path.
-- `NODE_ENV`: Use `production` to serve `apps/web/dist` from the Fastify API
-  process.
-- `OPENAI_API_KEY`: Optional API key for the OpenAI-compatible review model
-  provider. When omitted, the API uses `MockReviewModelClient`.
-- `OPENAI_MODEL`: Optional model name. Defaults to `gpt-4o-mini`.
-- `OPENAI_BASE_URL`: Optional OpenAI-compatible API base URL. Defaults to
-  `https://api.openai.com/v1`.
-
-The model provider sends only the PR snapshot, generated summary, and risk
-assessment to the review model. API keys and full request headers are not logged.
-
-See [docs/deployment.md](docs/deployment.md) for Render free-tier deployment
-steps.
+Render 单服务部署说明见 [docs/deployment.md](docs/deployment.md)。服务端部署后同一个服务会同时提供 Web 页面和 `/api/*` 接口；未配置 `OPENAI_API_KEY` 时会使用 mock 模型。
