@@ -48,7 +48,7 @@ export function App() {
             <ShieldCheck aria-hidden="true" />
             <span>AI PR Reviewer</span>
           </div>
-          <a className="github-link" href="https://github.com" target="_blank" rel="noreferrer">
+          <a className="github-link" href="https://github.com/cc-c122/AI-PR-Reviewer" target="_blank" rel="noreferrer">
             <Github aria-hidden="true" />
             GitHub
           </a>
@@ -181,7 +181,10 @@ function ReportView({ viewState }: { viewState: ViewState }) {
       <section className="report-empty">
         <ShieldAlert aria-hidden="true" />
         <h2>No report yet</h2>
-        <p>The report area will show PR details, summary, risk level, and review findings after analysis.</p>
+        <p>
+          The online Demo uses mock data and does not call GitHub, the API server, or an AI model. Run locally for real
+          GitHub PR analysis.
+        </p>
       </section>
     );
   }
@@ -333,7 +336,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                 </dl>
                 {matchingSignals.length > 0 ? (
                   <div className="rule-evidence">
-                    <strong>规则证据</strong>
+                    <strong>Rule evidence</strong>
                     <span>
                       {matchingSignals.slice(0, 2).map((signal) => `${signal.ruleId} (${signal.severity})`).join(", ")}
                       {matchingSignals.length > 2 ? ` +${matchingSignals.length - 2}` : ""}

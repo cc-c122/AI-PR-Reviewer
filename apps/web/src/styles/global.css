@@ -240,6 +240,13 @@ h3 {
   color: #ffffff;
   background: #1f6f63;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.input-row .demo-button {
+  border: 1px solid #b8c7cc;
+  color: #31545d;
+  background: #ffffff;
 }
 
 .secondary-button {
@@ -252,6 +259,7 @@ h3 {
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .secondary-button:hover:not(:disabled) {
@@ -695,6 +703,21 @@ dd {
     flex-direction: column;
   }
 
+  .input-row button,
+  .section-actions,
+  .finding-actions {
+    width: 100%;
+  }
+
+  .section-actions,
+  .finding-actions {
+    align-items: stretch;
+  }
+
+  .secondary-button {
+    justify-content: center;
+  }
+
   .status-panel {
     flex-basis: auto;
   }
@@ -727,5 +750,13 @@ dd {
 
   .metadata-grid {
     grid-template-columns: 1fr;
+  }
+
+  .source-stats div {
+    width: 100%;
+  }
+
+  .context-file summary {
+    align-items: flex-start;
   }
 }
