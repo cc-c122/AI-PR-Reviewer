@@ -1,0 +1,28 @@
+{
+  "name": "@ai-pr-reviewer/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@ai-pr-reviewer/core": "workspace:*",
+    "@ai-pr-reviewer/github": "workspace:*",
+    "@ai-pr-reviewer/model": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@prisma/client": "6.19.0",
+    "fastify": "^5.2.1",
+    "nanoid": "^5.0.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "prisma": "6.19.0",
+    "tsx": "^4.19.2"
+  }
+}

@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalysisTask {
+  id                String               @id
+  repositoryOwner   String
+  repositoryName    String
+  pullRequestNumber Int
+  status            String
+  errorMessage      String?
+  createdAt         DateTime
+  updatedAt         DateTime
+  snapshot          PullRequestSnapshot?
+  report            AnalysisReport?
+}
+
+model PullRequestSnapshot {
+  id                String       @id
+  taskId            String       @unique
+  task              AnalysisTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  repositoryOwner   String
+  repositoryName    String
+  pullRequestNumber Int
+  url               String
+  title             String
+  description       String
+  author            String
+  baseRef           String
+  baseSha           String
+  headRef           String
+  commitSha         String
+  changedFiles      String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model AnalysisReport {
+  id        String       @id @default(cuid())
+  taskId    String       @unique
+  task      AnalysisTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  summary   String
+  riskLevel String
+  findings  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
