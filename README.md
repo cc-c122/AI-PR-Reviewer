@@ -59,6 +59,38 @@ flowchart LR
   E --> F["前端展示 Summary / Risk / Findings"]
 ```
 
+## 设计思路
+
+### 模型选择
+
+系统采用 OpenAI-compatible provider + Mock fallback 的双模式设计：
+
+- **本地和演示场景**：未配置 `OPENAI_API_KEY` 时使用 `MockReviewModelClient`，保证项目无需密钥也能稳定展示完整 Review 流程。
+- **真实分析场景**：配置 `OPENAI_API_KEY` 后切换到 OpenAI-compatible provider，模型输出必须通过 Zod schema 校验，避免不可解析或字段缺失的结果进入报告。
+- **后续多模型策略**：轻量模型用于 PR 总结和文件级摘要，强推理模型用于高风险文件、安全相关代码和复杂业务逻辑，兼顾速度、成本和准确性。
+
+### 上下文获取方式
+
+当前本地完整模式会通过 GitHub API 获取 PR 元数据、changed files 和 patch，并生成 `PullRequestSnapshot` 作为分析输入。风险分析会结合文件路径、变更规模、测试文件信号和 patch 中的可疑标记生成初步风险等级。
+
+为了控制误报和漏报，系统设计上不会只依赖模型自由输出，而是采用：
+
+- PR metadata + changed files + patch 作为基础证据
+- 结构化 risk assessment 作为模型输入
+- schema 校验保证 findings 包含 severity、category、evidence、suggestion、confidence、blocking
+- Mock/模型输出都必须引用具体文件或变更证据
+
+后续会继续增强上下文构建能力，包括获取完整文件内容、相关测试文件、调用方/被调用方、配置文件、CI 状态、已有评论和关联 issue，并对大 PR 做上下文预算控制。
+
+### 未来扩展方向
+
+- **上下文增强**：构建 Review Context，补充完整文件内容、测试候选、函数级上下文和依赖关系。
+- **静态分析结合 AI**：引入 tree-sitter 和规则扫描，与模型 findings 交叉验证，降低误报。
+- **分阶段分析**：先返回 PR 总结和高风险文件，再异步生成深度 Review 建议，提高响应速度。
+- **GitHub App 集成**：支持 PR 创建或更新时自动触发分析，并回写 Check Run 或 Review Comment。
+- **团队规则配置**：支持组织级安全基线、代码规范、目录风险权重和自定义提示词。
+- **反馈闭环**：支持用户标记有用、误报、已处理，用于后续优化规则和模型提示。
+
 ## 本地运行
 
 ```bash
