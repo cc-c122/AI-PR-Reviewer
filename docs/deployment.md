@@ -1,5 +1,22 @@
 # Deployment
 
+## GitHub Pages Static Demo
+
+This repository includes a no-card static demo powered by GitHub Pages:
+
+https://cc-c122.github.io/AI-PR-Reviewer/
+
+The Pages workflow builds only `apps/web` with:
+
+```text
+GITHUB_PAGES=true
+VITE_DEMO_MODE=true
+```
+
+In demo mode, the frontend validates GitHub PR URLs and renders deterministic
+sample analysis data in the browser. It does not call the Fastify API, GitHub,
+Prisma, or an AI provider. This makes it suitable for a free public demo link.
+
 ## Render Free Web Service
 
 This project supports a single Render Web Service that serves both the Fastify API

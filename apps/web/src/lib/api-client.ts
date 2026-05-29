@@ -76,6 +76,10 @@ export type AnalysisResult = {
 };
 
 export async function createAnalysisTask(pullRequestUrl: string): Promise<AnalysisTask> {
+  if (isDemoMode()) {
+    return createDemoAnalysis(pullRequestUrl).task;
+  }
+
   return request("/api/analysis-tasks", analysisTaskSchema, {
     method: "POST",
     headers: {
@@ -86,6 +90,16 @@ export async function createAnalysisTask(pullRequestUrl: string): Promise<Analys
 }
 
 export async function getAnalysisReport(taskId: string): Promise<AnalysisReport> {
+  if (isDemoMode()) {
+    const demo = getDemoAnalysis(taskId);
+
+    if (!demo) {
+      throw new Error("Demo analysis task was not found.");
+    }
+
+    return demo.report;
+  }
+
   return request(`/api/analysis-tasks/${encodeURIComponent(taskId)}/report`, analysisReportSchema);
 }
 
@@ -96,6 +110,136 @@ export async function analyzePullRequest(pullRequestUrl: string): Promise<Analys
   return {
     task,
     report
+  };
+}
+
+const demoAnalyses = new Map<string, AnalysisResult>();
+
+function isDemoMode(): boolean {
+  return import.meta.env.VITE_DEMO_MODE === "true";
+}
+
+function getDemoAnalysis(taskId: string): AnalysisResult | undefined {
+  return demoAnalyses.get(taskId);
+}
+
+function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
+  const reference = parseDemoPullRequestUrl(pullRequestUrl);
+  const now = new Date().toISOString();
+  const taskId = `demo-${reference.owner}-${reference.repo}-${reference.pullRequestNumber}`;
+  const snapshot: PullRequestSnapshot = {
+    id: `snapshot-${taskId}`,
+    taskId,
+    repositoryOwner: reference.owner,
+    repositoryName: reference.repo,
+    pullRequestNumber: reference.pullRequestNumber,
+    url: pullRequestUrl,
+    title: "Demo analysis for AI PR Reviewer",
+    description: "Static GitHub Pages demo mode uses deterministic sample findings without a backend.",
+    author: "demo-user",
+    baseRef: "main",
+    baseSha: "a1b2c3d4e5f6",
+    headRef: "feature/demo-review",
+    commitSha: "f6e5d4c3b2a1",
+    changedFiles: [
+      {
+        path: "src/services/review-engine.ts",
+        status: "modified",
+        additions: 86,
+        deletions: 24,
+        changes: 110,
+        patch: "@@ demo patch omitted @@"
+      },
+      {
+        path: "src/services/review-engine.test.ts",
+        status: "modified",
+        additions: 18,
+        deletions: 2,
+        changes: 20
+      }
+    ]
+  };
+  const report: AnalysisReport = {
+    summary: `${reference.owner}/${reference.repo}#${reference.pullRequestNumber}: demo report. This static GitHub Pages build shows the review workflow without calling GitHub, the API server, or an AI provider.`,
+    riskLevel: "medium",
+    findings: [
+      {
+        id: `${taskId}:bug:edge-cases`,
+        taskId,
+        severity: "major",
+        category: "bug",
+        filePath: "src/services/review-engine.ts",
+        title: "Validate review-engine edge cases",
+        evidence: "The demo changed file has 110 total line changes in review-engine logic.",
+        suggestion: "Check null inputs, empty diffs, and model timeout paths before merging.",
+        confidence: 0.74,
+        blocking: true,
+        status: "open"
+      },
+      {
+        id: `${taskId}:test:coverage`,
+        taskId,
+        severity: "info",
+        category: "test",
+        filePath: "src/services/review-engine.test.ts",
+        title: "Confirm tests cover both success and failure paths",
+        evidence: "A related test file is present in the demo snapshot.",
+        suggestion: "Make sure tests cover schema validation failures and empty PR snapshots.",
+        confidence: 0.67,
+        blocking: false,
+        status: "open"
+      },
+      {
+        id: `${taskId}:maintainability:scope`,
+        taskId,
+        severity: "minor",
+        category: "maintainability",
+        filePath: "src/services/review-engine.ts",
+        title: "Keep analysis orchestration easy to split",
+        evidence: "The largest demo change is concentrated in one review-engine file.",
+        suggestion: "Separate fetching, risk scoring, and model validation when the implementation grows.",
+        confidence: 0.62,
+        blocking: false,
+        status: "open"
+      }
+    ]
+  };
+  const task: AnalysisTask = {
+    taskId,
+    status: "completed",
+    repositoryOwner: reference.owner,
+    repositoryName: reference.repo,
+    pullRequestNumber: reference.pullRequestNumber,
+    createdAt: now,
+    updatedAt: now,
+    snapshot,
+    report
+  };
+  const result = { task, report };
+
+  demoAnalyses.set(taskId, result);
+
+  return result;
+}
+
+function parseDemoPullRequestUrl(value: string) {
+  const url = new URL(value);
+  const [owner, repo, resource, pullRequestNumber] = url.pathname.split("/").filter(Boolean);
+
+  if (url.protocol !== "https:" || url.hostname !== "github.com" || resource !== "pull" || !owner || !repo) {
+    throw new Error("Demo mode accepts GitHub PR URLs like https://github.com/org/repo/pull/123.");
+  }
+
+  const parsedPullRequestNumber = Number(pullRequestNumber);
+
+  if (!Number.isInteger(parsedPullRequestNumber) || parsedPullRequestNumber <= 0) {
+    throw new Error("Demo mode requires a numeric pull request number.");
+  }
+
+  return {
+    owner,
+    repo,
+    pullRequestNumber: parsedPullRequestNumber
   };
 }
 

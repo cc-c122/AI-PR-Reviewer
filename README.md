@@ -13,7 +13,11 @@ model provider when the key is present.
 
 ## Live Demo
 
-Render demo placeholder: https://YOUR_RENDER_DEMO_URL_HERE
+[Open the GitHub Pages demo](https://cc-c122.github.io/AI-PR-Reviewer/)
+
+The GitHub Pages build runs in static demo mode, so it does not require a
+backend server, credit card, GitHub token, or OpenAI key. It shows the end-to-end
+review workflow with deterministic sample findings.
 
 ## Planned Stack
 
