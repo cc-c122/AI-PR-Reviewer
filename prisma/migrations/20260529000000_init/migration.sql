@@ -43,8 +43,23 @@ CREATE TABLE "AnalysisReport" (
     CONSTRAINT "AnalysisReport_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "AnalysisTask" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "AnalysisDetails" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "taskId" TEXT NOT NULL,
+    "reviewContextSummary" TEXT NOT NULL,
+    "staticAnalysis" TEXT NOT NULL,
+    "generatedAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "AnalysisDetails_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "AnalysisTask" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "PullRequestSnapshot_taskId_key" ON "PullRequestSnapshot"("taskId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AnalysisReport_taskId_key" ON "AnalysisReport"("taskId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AnalysisDetails_taskId_key" ON "AnalysisDetails"("taskId");

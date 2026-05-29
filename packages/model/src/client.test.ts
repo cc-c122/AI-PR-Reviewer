@@ -1,4 +1,9 @@
-import { assessPullRequestRisk, generatePullRequestSummary, PullRequestSnapshot } from "@ai-pr-reviewer/core";
+import {
+  assessPullRequestRisk,
+  buildPullRequestReviewContext,
+  generatePullRequestSummary,
+  PullRequestSnapshot
+} from "@ai-pr-reviewer/core";
 import { describe, expect, it } from "vitest";
 import { MockReviewModelClient } from "./client";
 import { createReviewModelClientFromEnv } from "./model-client-factory";
@@ -10,12 +15,19 @@ describe("MockReviewModelClient", () => {
     const snapshot = createSnapshot();
     const riskAssessment = assessPullRequestRisk(snapshot);
     const summary = generatePullRequestSummary(snapshot, riskAssessment);
+    const reviewContext = buildPullRequestReviewContext(snapshot);
     const client = new MockReviewModelClient();
 
     const report = await client.generateReview({
       snapshot,
       riskAssessment,
-      summary
+      summary,
+      reviewContext,
+      staticAnalysis: {
+        signals: [],
+        skippedFiles: [],
+        riskHints: []
+      }
     });
 
     expect(() => modelReviewOutputSchema.parse(report)).not.toThrow();
@@ -147,11 +159,18 @@ function createModelInput() {
   const snapshot = createSnapshot();
   const riskAssessment = assessPullRequestRisk(snapshot);
   const summary = generatePullRequestSummary(snapshot, riskAssessment);
+  const reviewContext = buildPullRequestReviewContext(snapshot);
 
   return {
     snapshot,
     riskAssessment,
-    summary
+    summary,
+    reviewContext,
+    staticAnalysis: {
+      signals: [],
+      skippedFiles: [],
+      riskHints: []
+    }
   };
 }
 

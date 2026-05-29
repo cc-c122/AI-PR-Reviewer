@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapAnalysisTaskRecord } from "./repository";
+import { mapAnalysisDetailsRecord, mapAnalysisTaskRecord } from "./repository";
 
 describe("mapAnalysisTaskRecord", () => {
   it("maps persisted task, snapshot, and report records to the API task shape", () => {
@@ -63,7 +63,8 @@ describe("mapAnalysisTaskRecord", () => {
         ],
         createdAt,
         updatedAt
-      }
+      },
+      details: null
     });
 
     expect(task).toEqual({
@@ -118,5 +119,61 @@ describe("mapAnalysisTaskRecord", () => {
         ]
       }
     });
+  });
+
+  it("maps persisted analysis details to the explainable API shape", () => {
+    const generatedAt = new Date("2026-05-29T00:02:00.000Z");
+
+    const details = mapAnalysisDetailsRecord({
+      reviewContextSummary: {
+        files: [
+          {
+            path: "src/widget.ts",
+            contextSources: [
+              {
+                type: "file_content",
+                filePath: "src/widget.ts",
+                description: "Repository file content at PR head commit."
+              }
+            ],
+            contentAvailable: true,
+            contentTruncated: false,
+            isTestFile: false,
+            testCandidatePaths: ["src/widget.test.ts"]
+          }
+        ],
+        contextSources: [
+          {
+            type: "metadata",
+            description: "Pull request metadata from GitHub."
+          }
+        ]
+      },
+      staticAnalysis: {
+        signals: [
+          {
+            id: "src/widget.ts:console-log",
+            filePath: "src/widget.ts",
+            ruleId: "console-log",
+            category: "maintainability",
+            severity: "low",
+            message: "console.log detected.",
+            evidence: "console.log(value)",
+            confidence: 0.62
+          }
+        ],
+        skippedFiles: [],
+        riskHints: ["LOW console-log in src/widget.ts: console.log detected."]
+      },
+      generatedAt
+    });
+
+    expect(details.generatedAt).toBe("2026-05-29T00:02:00.000Z");
+    expect(details.reviewContextSummary.files[0]).toMatchObject({
+      path: "src/widget.ts",
+      contentAvailable: true,
+      contentTruncated: false
+    });
+    expect(JSON.stringify(details)).not.toContain("const ");
   });
 });

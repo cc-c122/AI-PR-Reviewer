@@ -42,10 +42,51 @@ const reviewFindingSchema = z.object({
   status: z.enum(["open", "dismissed", "accepted"]).optional()
 });
 
+const contextSourceSchema = z.object({
+  type: z.enum(["metadata", "patch", "file_content", "test_candidate"]),
+  description: z.string(),
+  filePath: z.string().optional()
+});
+
+const staticAnalysisSchema = z.object({
+  signals: z.array(z.object({
+    id: z.string(),
+    filePath: z.string(),
+    ruleId: z.string(),
+    category: z.enum(["security", "maintainability", "test", "size"]),
+    severity: z.enum(["low", "medium", "high"]),
+    message: z.string(),
+    evidence: z.string(),
+    confidence: z.number()
+  })),
+  skippedFiles: z.array(z.object({
+    filePath: z.string(),
+    reason: z.enum(["generated", "lockfile", "build_artifact"])
+  })),
+  riskHints: z.array(z.string())
+});
+
+const analysisDetailsSchema = z.object({
+  reviewContextSummary: z.object({
+    files: z.array(z.object({
+      path: z.string(),
+      contextSources: z.array(contextSourceSchema),
+      contentAvailable: z.boolean(),
+      contentTruncated: z.boolean(),
+      isTestFile: z.boolean(),
+      testCandidatePaths: z.array(z.string())
+    })),
+    contextSources: z.array(contextSourceSchema)
+  }),
+  staticAnalysis: staticAnalysisSchema,
+  generatedAt: z.string()
+});
+
 const analysisReportSchema = z.object({
   summary: z.string(),
   riskLevel: z.enum(["low", "medium", "high", "unknown"]),
-  findings: z.array(reviewFindingSchema)
+  findings: z.array(reviewFindingSchema),
+  details: analysisDetailsSchema.optional()
 });
 
 const analysisTaskSchema = z.object({
@@ -202,7 +243,151 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         blocking: false,
         status: "open"
       }
-    ]
+    ],
+    details: {
+      reviewContextSummary: {
+        files: [
+          {
+            path: "src/services/review-engine.ts",
+            contextSources: [
+              {
+                type: "metadata",
+                filePath: "src/services/review-engine.ts",
+                description: "Changed file metadata from the pull request file list."
+              },
+              {
+                type: "patch",
+                filePath: "src/services/review-engine.ts",
+                description: "Changed file patch from GitHub pull request files."
+              },
+              {
+                type: "file_content",
+                filePath: "src/services/review-engine.ts",
+                description: "Repository file content at PR head commit, truncated by size limit."
+              },
+              {
+                type: "test_candidate",
+                filePath: "src/services/review-engine.ts",
+                description: "Potential related test/spec paths inferred from the changed file path."
+              }
+            ],
+            contentAvailable: true,
+            contentTruncated: true,
+            isTestFile: false,
+            testCandidatePaths: [
+              "src/services/review-engine.test.ts",
+              "src/services/review-engine.spec.ts",
+              "tests/review-engine.test.ts"
+            ]
+          },
+          {
+            path: "src/services/review-engine.test.ts",
+            contextSources: [
+              {
+                type: "metadata",
+                filePath: "src/services/review-engine.test.ts",
+                description: "Changed file metadata from the pull request file list."
+              },
+              {
+                type: "test_candidate",
+                filePath: "src/services/review-engine.test.ts",
+                description: "Changed file is itself a test/spec file."
+              }
+            ],
+            contentAvailable: false,
+            contentTruncated: false,
+            isTestFile: true,
+            testCandidatePaths: ["src/services/review-engine.test.ts"]
+          }
+        ],
+        contextSources: [
+          {
+            type: "metadata",
+            description: "Pull request metadata from GitHub."
+          },
+          {
+            type: "metadata",
+            filePath: "src/services/review-engine.ts",
+            description: "Changed file metadata from the pull request file list."
+          },
+          {
+            type: "patch",
+            filePath: "src/services/review-engine.ts",
+            description: "Changed file patch from GitHub pull request files."
+          },
+          {
+            type: "file_content",
+            filePath: "src/services/review-engine.ts",
+            description: "Repository file content at PR head commit, truncated by size limit."
+          },
+          {
+            type: "test_candidate",
+            filePath: "src/services/review-engine.ts",
+            description: "Potential related test/spec paths inferred from the changed file path."
+          },
+          {
+            type: "metadata",
+            filePath: "src/services/review-engine.test.ts",
+            description: "Changed file metadata from the pull request file list."
+          },
+          {
+            type: "test_candidate",
+            filePath: "src/services/review-engine.test.ts",
+            description: "Changed file is itself a test/spec file."
+          }
+        ]
+      },
+      staticAnalysis: {
+        signals: [
+          {
+            id: `${taskId}:large-change`,
+            filePath: "src/services/review-engine.ts",
+            ruleId: "large-change",
+            category: "size",
+            severity: "medium",
+            message: "Large service-level change detected in review orchestration.",
+            evidence: "src/services/review-engine.ts changed 110 line(s).",
+            confidence: 0.72
+          },
+          {
+            id: `${taskId}:console-log`,
+            filePath: "src/services/review-engine.ts",
+            ruleId: "console-log",
+            category: "maintainability",
+            severity: "low",
+            message: "Debug logging pattern detected in changed context.",
+            evidence: "console.log(\"analysis started\")",
+            confidence: 0.62
+          },
+          {
+            id: `${taskId}:test-present`,
+            filePath: "src/services/review-engine.test.ts",
+            ruleId: "test-context-present",
+            category: "test",
+            severity: "low",
+            message: "Related test file is part of this PR.",
+            evidence: "src/services/review-engine.test.ts changed 20 line(s).",
+            confidence: 0.7
+          }
+        ],
+        skippedFiles: [
+          {
+            filePath: "pnpm-lock.yaml",
+            reason: "lockfile"
+          },
+          {
+            filePath: "dist/assets/index.js",
+            reason: "build_artifact"
+          }
+        ],
+        riskHints: [
+          "MEDIUM large-change in src/services/review-engine.ts: Large service-level change detected in review orchestration.",
+          "LOW console-log in src/services/review-engine.ts: Debug logging pattern detected in changed context.",
+          "Skipped 2 generated/lock/build file(s) to reduce noise."
+        ]
+      },
+      generatedAt: now
+    }
   };
   const task: AnalysisTask = {
     taskId,

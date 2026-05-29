@@ -11,6 +11,7 @@
   "references": [
     { "path": "../../packages/core" },
     { "path": "../../packages/github" },
-    { "path": "../../packages/model" }
+    { "path": "../../packages/model" },
+    { "path": "../../packages/static-analysis" }
   ]
 }

@@ -18,6 +18,7 @@ model AnalysisTask {
   updatedAt         DateTime
   snapshot          PullRequestSnapshot?
   report            AnalysisReport?
+  details           AnalysisDetails?
 }
 
 model PullRequestSnapshot {
@@ -49,4 +50,15 @@ model AnalysisReport {
   findings  String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+}
+
+model AnalysisDetails {
+  id                   String       @id @default(cuid())
+  taskId               String       @unique
+  task                 AnalysisTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewContextSummary String
+  staticAnalysis       String
+  generatedAt          DateTime
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 }

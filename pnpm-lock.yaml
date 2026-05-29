@@ -48,6 +48,9 @@ importers:
       '@ai-pr-reviewer/model':
         specifier: workspace:*
         version: link:../../packages/model
+      '@ai-pr-reviewer/static-analysis':
+        specifier: workspace:*
+        version: link:../../packages/static-analysis
       '@fastify/cors':
         specifier: ^10.0.2
         version: 10.1.0

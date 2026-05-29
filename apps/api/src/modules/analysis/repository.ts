@@ -1,8 +1,11 @@
 import {
+  AnalysisDetails,
   AnalysisReport,
   AnalysisTask,
   ChangedFile,
   PullRequestSnapshot,
+  ReviewContextSummary,
+  StaticAnalysisResult,
   reviewFindingSchema
 } from "@ai-pr-reviewer/core";
 import { Prisma, PrismaClient } from "@prisma/client";
@@ -12,6 +15,7 @@ type AnalysisTaskRecord = Prisma.AnalysisTaskGetPayload<{
   include: {
     snapshot: true;
     report: true;
+    details: true;
   };
 }>;
 
@@ -19,6 +23,8 @@ export interface AnalysisTaskRepository {
   saveTask(task: AnalysisTask): Promise<AnalysisTask>;
   findTask(taskId: string): Promise<AnalysisTask | null>;
   saveReport(taskId: string, report: AnalysisReport): Promise<AnalysisReport>;
+  saveAnalysisDetails(taskId: string, details: AnalysisDetails): Promise<AnalysisDetails>;
+  findAnalysisDetails(taskId: string): Promise<AnalysisDetails | null>;
 }
 
 const changedFileSchema = z.object({
@@ -34,6 +40,39 @@ const changedFileSchema = z.object({
 const changedFilesSchema = z.array(changedFileSchema);
 const findingsSchema = z.array(reviewFindingSchema);
 const analysisTaskStatusSchema = z.enum(["queued", "running", "completed", "failed"]);
+const contextSourceSchema = z.object({
+  type: z.enum(["metadata", "patch", "file_content", "test_candidate"]),
+  description: z.string(),
+  filePath: z.string().optional()
+});
+const reviewContextSummarySchema = z.object({
+  files: z.array(z.object({
+    path: z.string(),
+    contextSources: z.array(contextSourceSchema),
+    contentAvailable: z.boolean(),
+    contentTruncated: z.boolean(),
+    isTestFile: z.boolean(),
+    testCandidatePaths: z.array(z.string())
+  })),
+  contextSources: z.array(contextSourceSchema)
+});
+const staticAnalysisSchema = z.object({
+  signals: z.array(z.object({
+    id: z.string(),
+    filePath: z.string(),
+    ruleId: z.string(),
+    category: z.enum(["security", "maintainability", "test", "size"]),
+    severity: z.enum(["low", "medium", "high"]),
+    message: z.string(),
+    evidence: z.string(),
+    confidence: z.number()
+  })),
+  skippedFiles: z.array(z.object({
+    filePath: z.string(),
+    reason: z.enum(["generated", "lockfile", "build_artifact"])
+  })),
+  riskHints: z.array(z.string())
+});
 
 export class PrismaAnalysisTaskRepository implements AnalysisTaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -90,7 +129,8 @@ export class PrismaAnalysisTaskRepository implements AnalysisTaskRepository {
       update,
       include: {
         snapshot: true,
-        report: true
+        report: true,
+        details: true
       }
     });
 
@@ -104,7 +144,8 @@ export class PrismaAnalysisTaskRepository implements AnalysisTaskRepository {
       },
       include: {
         snapshot: true,
-        report: true
+        report: true,
+        details: true
       }
     });
 
@@ -130,6 +171,37 @@ export class PrismaAnalysisTaskRepository implements AnalysisTaskRepository {
     });
 
     return mapAnalysisReportRecord(record);
+  }
+
+  async saveAnalysisDetails(taskId: string, details: AnalysisDetails): Promise<AnalysisDetails> {
+    const record = await this.prisma.analysisDetails.upsert({
+      where: {
+        taskId
+      },
+      create: {
+        taskId,
+        reviewContextSummary: stringifyJson(details.reviewContextSummary),
+        staticAnalysis: stringifyJson(details.staticAnalysis),
+        generatedAt: new Date(details.generatedAt)
+      },
+      update: {
+        reviewContextSummary: stringifyJson(details.reviewContextSummary),
+        staticAnalysis: stringifyJson(details.staticAnalysis),
+        generatedAt: new Date(details.generatedAt)
+      }
+    });
+
+    return mapAnalysisDetailsRecord(record);
+  }
+
+  async findAnalysisDetails(taskId: string): Promise<AnalysisDetails | null> {
+    const record = await this.prisma.analysisDetails.findUnique({
+      where: {
+        taskId
+      }
+    });
+
+    return record ? mapAnalysisDetailsRecord(record) : null;
   }
 }
 
@@ -178,6 +250,18 @@ export function mapAnalysisReportRecord(record: {
     summary: record.summary,
     riskLevel: z.enum(["low", "medium", "high", "unknown"]).parse(record.riskLevel),
     findings: findingsSchema.parse(parseJsonString(record.findings))
+  };
+}
+
+export function mapAnalysisDetailsRecord(record: {
+  reviewContextSummary: unknown;
+  staticAnalysis: unknown;
+  generatedAt: Date;
+}): AnalysisDetails {
+  return {
+    reviewContextSummary: reviewContextSummarySchema.parse(parseJsonString(record.reviewContextSummary)) as ReviewContextSummary,
+    staticAnalysis: staticAnalysisSchema.parse(parseJsonString(record.staticAnalysis)) as StaticAnalysisResult,
+    generatedAt: record.generatedAt.toISOString()
   };
 }
 

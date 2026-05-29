@@ -119,7 +119,9 @@ function buildSystemPrompt(): string {
     "Analyze only the pull request context provided in the user message.",
     "Do not invent files, behavior, requirements, test results, vulnerabilities, or business context that is not present.",
     "If evidence is weak, lower confidence and mark the finding as non-blocking.",
-    "Every finding must cite concrete evidence from the provided snapshot, summary, risk assessment, changed file metadata, or patch.",
+    "Every finding must cite concrete evidence from the provided review context, including metadata, patch, file content, or test candidates when available.",
+    "Prefer staticAnalysis signals as supporting evidence when they are relevant.",
+    "Do not treat low-confidence static rule hits as certain bugs; explain uncertainty with confidence and non-blocking findings when appropriate.",
     "Return only valid JSON matching this shape:",
     '{ "summary": string, "riskLevel": "low" | "medium" | "high" | "unknown", "findings": ReviewFinding[] }',
     "Each ReviewFinding must include id, taskId, severity, category, filePath, title, evidence, suggestion, confidence, blocking, and status.",
@@ -134,21 +136,8 @@ function buildPromptInput(input: ReviewModelInput) {
   return {
     summary: input.summary,
     riskAssessment: input.riskAssessment,
-    pullRequest: {
-      taskId: input.snapshot.taskId,
-      repositoryOwner: input.snapshot.repositoryOwner,
-      repositoryName: input.snapshot.repositoryName,
-      pullRequestNumber: input.snapshot.pullRequestNumber,
-      url: input.snapshot.url,
-      title: input.snapshot.title,
-      description: input.snapshot.description,
-      author: input.snapshot.author,
-      baseRef: input.snapshot.baseRef,
-      baseSha: input.snapshot.baseSha,
-      headRef: input.snapshot.headRef,
-      commitSha: input.snapshot.commitSha,
-      changedFiles: input.snapshot.changedFiles
-    }
+    reviewContext: input.reviewContext,
+    staticAnalysis: input.staticAnalysis
   };
 }
 
