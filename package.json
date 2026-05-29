@@ -14,6 +14,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "render:build": "pnpm prisma:generate && pnpm build",
+    "render:start": "prisma migrate deploy || node scripts/apply-sqlite-schema.mjs && pnpm --filter @ai-pr-reviewer/api start",
     "format": "prettier --write ."
   },
   "dependencies": {

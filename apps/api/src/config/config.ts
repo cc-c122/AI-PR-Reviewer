@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const configSchema = z.object({
   port: z.coerce.number().int().positive().default(4000),
+  nodeEnv: z.enum(["development", "test", "production"]).default("development"),
   logLevel: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   githubToken: z.string().optional(),
   openAiApiKey: z.string().optional(),
@@ -14,7 +15,8 @@ export type AppConfig = z.infer<typeof configSchema>;
 
 export function loadConfig(): AppConfig {
   return configSchema.parse({
-    port: process.env.API_PORT,
+    port: process.env.PORT ?? process.env.API_PORT,
+    nodeEnv: process.env.NODE_ENV,
     logLevel: process.env.LOG_LEVEL,
     githubToken: process.env.GITHUB_TOKEN,
     openAiApiKey: process.env.OPENAI_API_KEY,

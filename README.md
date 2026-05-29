@@ -11,6 +11,10 @@ risk level, and initial findings. It uses a deterministic mock model when
 `OPENAI_API_KEY` is not configured, and switches to an OpenAI-compatible review
 model provider when the key is present.
 
+## Live Demo
+
+Render demo placeholder: https://YOUR_RENDER_DEMO_URL_HERE
+
 ## Planned Stack
 
 - React + Vite + TypeScript for the web app
@@ -34,6 +38,20 @@ pnpm dev
 
 The API starts on `http://localhost:4000` by default and the web app starts on
 `http://localhost:5173`.
+
+For a single-process production-style local run:
+
+```bash
+pnpm render:build
+$env:NODE_ENV="production"; $env:DATABASE_URL="file:./demo.db"; pnpm render:start
+```
+
+Open `http://localhost:4000` for the web UI and `http://localhost:4000/api/health`
+for the API health check.
+
+`render:start` prefers `prisma migrate deploy` and falls back to applying the
+checked-in SQLite schema directly if Prisma's schema engine is unavailable in a
+constrained runtime.
 
 Create an analysis task directly:
 
@@ -79,6 +97,8 @@ Copy `.env.example` to `.env` before local development.
 - `API_PORT`: API port. Defaults to `4000`.
 - `WEB_PORT`: Vite web port. Defaults to `5173`.
 - `DATABASE_URL`: Reserved for persistence. Defaults to SQLite local dev path.
+- `NODE_ENV`: Use `production` to serve `apps/web/dist` from the Fastify API
+  process.
 - `OPENAI_API_KEY`: Optional API key for the OpenAI-compatible review model
   provider. When omitted, the API uses `MockReviewModelClient`.
 - `OPENAI_MODEL`: Optional model name. Defaults to `gpt-4o-mini`.
@@ -87,3 +107,6 @@ Copy `.env.example` to `.env` before local development.
 
 The model provider sends only the PR snapshot, generated summary, and risk
 assessment to the review model. API keys and full request headers are not logged.
+
+See [docs/deployment.md](docs/deployment.md) for Render free-tier deployment
+steps.

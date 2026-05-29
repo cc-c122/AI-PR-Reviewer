@@ -6,6 +6,7 @@ import { analysisRoutes } from "./modules/analysis/routes";
 import { PrismaAnalysisTaskRepository } from "./modules/analysis/repository";
 import { loadConfig } from "./config/config";
 import { createPrismaClient } from "./prisma/client";
+import { registerStaticWeb } from "./static-web";
 
 const config = loadConfig();
 const githubClient = createGitHubClient(config.githubToken ? { token: config.githubToken } : {});
@@ -42,9 +43,16 @@ app.addHook("onClose", async () => {
   await prisma.$disconnect();
 });
 
-app.get("/health", async () => ({
+const healthResponse = async () => ({
   status: "ok"
-}));
+});
+
+app.get("/health", healthResponse);
+app.get("/api/health", healthResponse);
+
+if (config.nodeEnv === "production") {
+  await registerStaticWeb(app);
+}
 
 await app.listen({
   port: config.port,
