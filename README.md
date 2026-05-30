@@ -232,7 +232,7 @@ GITHUB_PAGES=true
 VITE_DEMO_MODE=true
 ```
 
-Render 单服务部署说明见 [docs/deployment.md](docs/deployment.md)。服务端部署后同一个服务会同时提供 Web 页面和 `/api/*` 接口；未配置 `OPENAI_API_KEY` 时会使用 mock 模型。
+当前公开入口为 GitHub Pages 静态 Demo。完整服务端版本可按上面的本地完整模式运行，或参考 [docs/deployment.md](docs/deployment.md) 自行部署可选 Render 服务；仓库当前不提供公开后端服务地址。
 
 ## 未来扩展方向
 
