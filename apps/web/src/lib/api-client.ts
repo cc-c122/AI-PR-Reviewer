@@ -441,7 +441,7 @@ function parseDemoPullRequestUrl(value: string) {
   const [owner, repo, resource, pullRequestNumber] = url.pathname.split("/").filter(Boolean);
 
   if (url.protocol !== "https:" || url.hostname !== "github.com" || resource !== "pull" || !owner || !repo) {
-    throw new Error("Demo 模式只接受形如 https://github.com/org/repo/pull/123 的 GitHub PR URL。");
+    throw new Error("Demo 模式只接受形如 https://github.com/cc-c122/AI-PR-Reviewer/pull/1 的 GitHub PR URL。");
   }
 
   const parsedPullRequestNumber = Number(pullRequestNumber);

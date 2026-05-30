@@ -1,7 +1,6 @@
 import { Search } from "lucide-react";
 import { FormEvent, useState } from "react";
-
-const demoPullRequestUrl = "https://github.com/org/repo/pull/123";
+import { demoPullRequestUrl } from "../../lib/demo-pr";
 
 type PrInputFormProps = {
   disabled?: boolean;
@@ -31,7 +30,7 @@ export function PrInputForm({ disabled = false, onSubmit }: PrInputFormProps) {
           type="url"
           value={pullRequestUrl}
           onChange={(event) => setPullRequestUrl(event.target.value)}
-          placeholder="https://github.com/org/repo/pull/123"
+          placeholder={demoPullRequestUrl}
           disabled={disabled}
           required
         />
