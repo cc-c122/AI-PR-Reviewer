@@ -14,6 +14,16 @@ export type SkippedStaticAnalysisFile = {
 };
 
 const largeChangeThreshold = 300;
+const introducedByPrSource = "introduced_by_pr" as const;
+const contextOnlySource = "context_only" as const;
+
+type PatternMatch = {
+  evidence: string;
+  confidence: number;
+  source: StaticAnalysisSignal["source"];
+  needsHumanConfirmation: boolean;
+  line?: number;
+};
 
 export function analyzeReviewContext(reviewContext: PullRequestReviewContext): StaticAnalysisResult {
   const signals: StaticAnalysisSignal[] = [];
@@ -32,7 +42,7 @@ export function analyzeReviewContext(reviewContext: PullRequestReviewContext): S
     }
 
     if (file.changes >= largeChangeThreshold) {
-      signals.push(createSignal(file, "large-change", "size", "medium", `Large file-level change: ${file.changes} lines changed.`, `${file.path} changed ${file.changes} line(s).`, 0.72));
+      signals.push(createSignal(file, "large-change", "size", "medium", introducedByPrSource, false, `Large file-level change: ${file.changes} lines changed.`, `${file.path} changed ${file.changes} line(s).`, 0.72));
     }
 
     if (!hasTestChange && !file.isTestFile && file.testCandidatePaths.length > 0) {
@@ -42,6 +52,8 @@ export function analyzeReviewContext(reviewContext: PullRequestReviewContext): S
           "missing-test-change",
           "test",
           "medium",
+          introducedByPrSource,
+          false,
           "Source change has no changed test file in this PR.",
           `Candidate related tests: ${file.testCandidatePaths.slice(0, 3).join(", ")}.`,
           0.68,
@@ -82,10 +94,10 @@ function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
   ];
 
   for (const rule of patterns) {
-    const match = findPatternMatch(file, rule.pattern);
+    const match = findPatternMatch(file, rule.pattern, 0.74, 0.45);
 
     if (match) {
-      signals.push(createSignal(file, rule.ruleId, "security", "high", rule.message, match.evidence, 0.74, match.line));
+      signals.push(createSignal(file, rule.ruleId, "security", "high", match.source, match.needsHumanConfirmation, withContextOnlyMessage(rule.message, match), match.evidence, match.confidence, match.line));
     }
   }
 
@@ -95,25 +107,28 @@ function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
 function scanMaintainabilityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
   const text = getAnalyzableText(file);
   const signals: StaticAnalysisSignal[] = [];
-  const todoMatch = findPatternMatch(file, /\b(TODO|FIXME)\b/iu);
-  const consoleMatch = findPatternMatch(file, /console\.log\s*\(/u);
+  const todoMatch = findPatternMatch(file, /\b(TODO|FIXME)\b/iu, 0.58, 0.35);
+  const consoleMatch = findPatternMatch(file, /console\.log\s*\(/u, 0.62, 0.38);
 
   if (!text) {
     return signals;
   }
 
-  const anyCount = countMatches(text, /\bany\b/gu);
+  const addedAnyCount = countMatches(getAddedLineText(file), /\bany\b/gu);
+  const contextAnyCount = countMatches(text, /\bany\b/gu);
 
-  if (anyCount >= 5) {
-    signals.push(createSignal(file, "many-any", "maintainability", "medium", "Many TypeScript any usages detected.", `${anyCount} occurrences of "any".`, 0.65));
+  if (addedAnyCount >= 3) {
+    signals.push(createSignal(file, "many-any", "maintainability", "medium", introducedByPrSource, false, "Many TypeScript any usages detected in added lines.", `新增行中出现 ${addedAnyCount} 个 any。`, 0.65));
+  } else if (contextAnyCount >= 5) {
+    signals.push(createSignal(file, "context-many-any", "maintainability", "low", contextOnlySource, true, "Related file context contains many TypeScript any usages.", `相关文件上下文中存在 ${contextAnyCount} 个 any，需确认是否与本 PR 相关。`, 0.35));
   }
 
   if (todoMatch) {
-    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", "TODO/FIXME marker detected in changed context.", todoMatch.evidence, 0.58, todoMatch.line));
+    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", todoMatch.source, todoMatch.needsHumanConfirmation, withContextOnlyMessage("TODO/FIXME marker detected in changed context.", todoMatch), todoMatch.evidence, todoMatch.confidence, todoMatch.line));
   }
 
   if (consoleMatch) {
-    signals.push(createSignal(file, "console-log", "maintainability", "low", "console.log detected in changed context.", consoleMatch.evidence, 0.62, consoleMatch.line));
+    signals.push(createSignal(file, "console-log", "maintainability", "low", consoleMatch.source, consoleMatch.needsHumanConfirmation, withContextOnlyMessage("console.log detected in changed context.", consoleMatch), consoleMatch.evidence, consoleMatch.confidence, consoleMatch.line));
   }
 
   return signals;
@@ -124,6 +139,8 @@ function createSignal(
   ruleId: string,
   category: StaticAnalysisSignal["category"],
   severity: StaticSignalSeverity,
+  source: StaticAnalysisSignal["source"],
+  needsHumanConfirmation: boolean,
   message: string,
   evidence: string,
   confidence: number,
@@ -135,6 +152,8 @@ function createSignal(
     ruleId,
     category,
     severity,
+    source,
+    needsHumanConfirmation,
     message,
     evidence,
     confidence,
@@ -156,7 +175,19 @@ function getAnalyzableText(file: ReviewContextFile): string {
   return [file.patch, file.content].filter((value): value is string => Boolean(value)).join("\n");
 }
 
-function findPatternMatch(file: ReviewContextFile, pattern: RegExp): { evidence: string; line?: number } | null {
+function getAddedLineText(file: ReviewContextFile): string {
+  return file.changedLines
+    ?.filter((line) => line.type === "added")
+    .map((line) => line.content)
+    .join("\n") ?? "";
+}
+
+function findPatternMatch(
+  file: ReviewContextFile,
+  pattern: RegExp,
+  introducedConfidence: number,
+  contextConfidence: number,
+): PatternMatch | null {
   const changedLineMatch = file.changedLines
     ?.filter((line) => line.type === "added")
     .find((line) => pattern.test(line.content));
@@ -164,13 +195,29 @@ function findPatternMatch(file: ReviewContextFile, pattern: RegExp): { evidence:
   if (changedLineMatch) {
     return {
       evidence: changedLineMatch.content,
+      confidence: introducedConfidence,
+      source: introducedByPrSource,
+      needsHumanConfirmation: false,
       line: changedLineMatch.line
     };
   }
 
   const evidence = findEvidence(getAnalyzableText(file), pattern);
 
-  return evidence ? { evidence } : null;
+  return evidence
+    ? {
+        evidence: `相关上下文存在该模式，需人工确认是否由本 PR 引入：${evidence}`,
+        confidence: contextConfidence,
+        source: contextOnlySource,
+        needsHumanConfirmation: true
+      }
+    : null;
+}
+
+function withContextOnlyMessage(message: string, match: PatternMatch): string {
+  return match.source === contextOnlySource
+    ? `${message} Related context contains this pattern; confirm whether the PR introduced it.`
+    : message;
 }
 
 function getSkipReason(filePath: string): SkippedStaticAnalysisFile["reason"] | null {

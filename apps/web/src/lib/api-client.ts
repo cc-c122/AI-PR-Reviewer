@@ -55,6 +55,8 @@ const staticAnalysisSchema = z.object({
     ruleId: z.string(),
     category: z.enum(["security", "maintainability", "test", "size"]),
     severity: z.enum(["low", "medium", "high"]),
+    source: z.enum(["introduced_by_pr", "context_only"]),
+    needsHumanConfirmation: z.boolean(),
     message: z.string(),
     evidence: z.string(),
     confidence: z.number(),
@@ -370,6 +372,8 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
           ruleId: "large-change",
           category: "size",
           severity: "medium",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
           message: "检测到 review 编排中的服务级大改动。",
           evidence: "src/services/review-engine.ts 变更 110 行。",
           confidence: 0.72
@@ -380,6 +384,8 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
           ruleId: "console-log",
           category: "maintainability",
           severity: "low",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
           message: "在变更上下文中检测到调试日志模式。",
           evidence: "console.log(\"analysis started\")",
           confidence: 0.62,
@@ -391,10 +397,24 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
           ruleId: "test-context-present",
           category: "test",
           severity: "low",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
           message: "相关测试文件已包含在本次 PR 中。",
           evidence: "src/services/review-engine.test.ts 变更 20 行。",
           confidence: 0.7,
           line: 18
+        },
+        {
+          id: `${taskId}:context-many-any`,
+          filePath: "src/services/review-engine.ts",
+          ruleId: "context-many-any",
+          category: "maintainability",
+          severity: "low",
+          source: "context_only",
+          needsHumanConfirmation: true,
+          message: "相关文件上下文中存在较多 any，需要人工确认是否与本 PR 相关。",
+          evidence: "相关文件上下文中存在 6 个 any，需确认是否与本 PR 相关。",
+          confidence: 0.35
         }
       ],
       skippedFiles: [
@@ -410,6 +430,7 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
       riskHints: [
         "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
         "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
+        "LOW context-many-any in src/services/review-engine.ts: 相关上下文存在较多 any，需人工确认。",
         "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
       ]
     },

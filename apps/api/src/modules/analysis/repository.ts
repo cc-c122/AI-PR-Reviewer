@@ -63,6 +63,8 @@ const staticAnalysisSchema = z.object({
     ruleId: z.string(),
     category: z.enum(["security", "maintainability", "test", "size"]),
     severity: z.enum(["low", "medium", "high"]),
+    source: z.enum(["introduced_by_pr", "context_only"]),
+    needsHumanConfirmation: z.boolean(),
     message: z.string(),
     evidence: z.string(),
     confidence: z.number(),

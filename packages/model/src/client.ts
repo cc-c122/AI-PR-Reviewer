@@ -38,6 +38,8 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
     : "Review 上下文中没有变更文件。";
   const staticSignalEvidence = describeStaticSignals(input, file?.path);
   const line = findSuggestedLine(input, file?.path);
+  const hasContextOnlySignal = hasContextOnlySignals(input, file?.path);
+  const hasOnlyContextOnlySignal = hasOnlyContextOnlySignals(input, file?.path);
 
   return reviewFindingSchema.parse({
     id: `${input.snapshot.taskId}:bug:${toFindingId(file?.path ?? "pull-request")}`,
@@ -48,11 +50,11 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
     ...(line !== undefined ? { line } : {}),
     title: "检查变更逻辑的边界场景",
     evidence: file
-      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}`
+      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}${hasContextOnlySignal ? "其中 context_only 信号只表示相关上下文存在风险模式，需要人工确认是否由本 PR 引入。" : ""}`
       : "PR 快照中没有变更文件。",
     suggestion: "请人工确认变更逻辑周围的边界条件、空值处理和失败路径。",
-    confidence: file ? 0.58 : 0.35,
-    blocking: input.riskAssessment.riskLevel === "high",
+    confidence: hasOnlyContextOnlySignal ? 0.48 : file ? 0.58 : 0.35,
+    blocking: input.riskAssessment.riskLevel === "high" && !hasOnlyContextOnlySignal,
     status: "open"
   });
 }
@@ -78,7 +80,7 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
     evidence: hasTestChanges
       ? `本次 PR 变更了 ${input.riskAssessment.testFileCount} 个测试文件。`
       : missingTestSignal
-        ? `静态分析信号 ${missingTestSignal.ruleId}: ${missingTestSignal.evidence}`
+        ? `静态分析信号 ${missingTestSignal.ruleId}（${missingTestSignal.source}）：${missingTestSignal.evidence}`
         : contextFile && contextFile.testCandidatePaths.length > 0
           ? `未检测到测试文件变更。候选相关测试包括 ${contextFile.testCandidatePaths.slice(0, 3).join(", ")}。`
           : "源代码变更旁未检测到测试文件变更。",
@@ -94,6 +96,7 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
 function createMaintainabilityFinding(input: ReviewModelInput): ReviewFinding {
   const file = findLargestFile(input.snapshot.changedFiles);
   const line = findSuggestedLine(input, file?.path);
+  const staticSignalEvidence = describeStaticSignals(input, file?.path);
 
   return reviewFindingSchema.parse({
     id: `${input.snapshot.taskId}:maintainability:${toFindingId(file?.path ?? "pull-request")}`,
@@ -104,7 +107,7 @@ function createMaintainabilityFinding(input: ReviewModelInput): ReviewFinding {
     ...(line !== undefined ? { line } : {}),
     title: "优先关注最大变更区域",
     evidence: file
-      ? `${file.path} 是本次改动最大的文件，共 ${file.changes} 行变更。`
+      ? `${file.path} 是本次改动最大的文件，共 ${file.changes} 行变更。${staticSignalEvidence}`
       : "快照中没有可用于排序的变更文件。",
     suggestion: "如果该文件混合了无关职责，建议将后续工作拆分到清晰边界中。",
     confidence: file ? 0.64 : 0.35,
@@ -158,7 +161,20 @@ function describeStaticSignals(input: ReviewModelInput, filePath: string | undef
     return "";
   }
 
-  return ` 静态分析信号：${signals.map((signal) => `${signal.ruleId}（${signal.severity}，${signal.confidence}）`).join("；")}。`;
+  return ` 静态分析信号：${signals.map((signal) => {
+    const confirmation = signal.needsHumanConfirmation ? "，需要人工确认" : "";
+    return `${signal.ruleId}（${signal.severity}，${signal.source}，${signal.confidence}${confirmation}）`;
+  }).join("；")}。`;
+}
+
+function hasContextOnlySignals(input: ReviewModelInput, filePath: string | undefined): boolean {
+  return Boolean(filePath && input.staticAnalysis.signals.some((signal) => signal.filePath === filePath && signal.source === "context_only"));
+}
+
+function hasOnlyContextOnlySignals(input: ReviewModelInput, filePath: string | undefined): boolean {
+  const signals = filePath ? input.staticAnalysis.signals.filter((signal) => signal.filePath === filePath) : [];
+
+  return signals.length > 0 && signals.every((signal) => signal.source === "context_only");
 }
 
 function findSuggestedLine(input: ReviewModelInput, filePath: string | undefined): number | undefined {
@@ -166,7 +182,9 @@ function findSuggestedLine(input: ReviewModelInput, filePath: string | undefined
     return undefined;
   }
 
-  const signalLine = input.staticAnalysis.signals.find((signal) => signal.filePath === filePath && signal.line)?.line;
+  const signalLine = input.staticAnalysis.signals.find(
+    (signal) => signal.filePath === filePath && signal.source === "introduced_by_pr" && signal.line,
+  )?.line;
 
   if (signalLine !== undefined) {
     return signalLine;

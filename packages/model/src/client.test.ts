@@ -2,7 +2,8 @@ import {
   assessPullRequestRisk,
   buildPullRequestReviewContext,
   generatePullRequestSummary,
-  PullRequestSnapshot
+  PullRequestSnapshot,
+  StaticAnalysisResult
 } from "@ai-pr-reviewer/core";
 import { describe, expect, it } from "vitest";
 import { MockReviewModelClient } from "./client";
@@ -41,7 +42,7 @@ describe("MockReviewModelClient", () => {
     );
   });
 
-  it("uses static analysis line numbers for generated findings", async () => {
+  it("uses introduced static analysis line numbers for generated findings", async () => {
     const report = await generateMockReport({
       signals: [
         {
@@ -50,6 +51,8 @@ describe("MockReviewModelClient", () => {
           ruleId: "console-log",
           category: "maintainability",
           severity: "low",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
           message: "console.log detected.",
           evidence: "console.log(value)",
           confidence: 0.62,
@@ -63,7 +66,7 @@ describe("MockReviewModelClient", () => {
     expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(42);
   });
 
-  it("falls back to the first added changed line when no signal line exists", async () => {
+  it("falls back to the first added changed line when no introduced signal line exists", async () => {
     const report = await generateMockReport({
       signals: [],
       skippedFiles: [],
@@ -71,6 +74,34 @@ describe("MockReviewModelClient", () => {
     });
 
     expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(41);
+  });
+
+  it("marks context-only static signal evidence as needing human confirmation", async () => {
+    const report = await generateMockReport({
+      signals: [
+        {
+          id: "src/widget.ts:context-many-any",
+          filePath: "src/widget.ts",
+          ruleId: "context-many-any",
+          category: "maintainability",
+          severity: "low",
+          source: "context_only",
+          needsHumanConfirmation: true,
+          message: "Related context contains many any usages.",
+          evidence: "相关文件上下文中存在 6 个 any，需确认是否与本 PR 相关。",
+          confidence: 0.35,
+          line: 99
+        }
+      ],
+      skippedFiles: [],
+      riskHints: []
+    });
+
+    const finding = report.findings.find((item) => item.filePath === "src/widget.ts");
+
+    expect(finding?.evidence).toContain("需要人工确认");
+    expect(finding?.line).toBe(41);
+    expect(finding?.blocking).toBe(false);
   });
 });
 
@@ -165,7 +196,7 @@ describe("OpenAICompatibleReviewModelClient", () => {
   });
 });
 
-async function generateMockReport(staticAnalysis: ReturnType<typeof createModelInput>["staticAnalysis"]) {
+async function generateMockReport(staticAnalysis: StaticAnalysisResult) {
   const input = createModelInput();
   const client = new MockReviewModelClient();
 

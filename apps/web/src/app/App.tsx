@@ -336,7 +336,11 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                   <div className="rule-evidence">
                     <strong>规则证据</strong>
                     <span>
-                      {matchingSignals.slice(0, 2).map((signal) => `${signal.ruleId} (${signal.severity})`).join(", ")}
+                      {matchingSignals.slice(0, 2).map((signal) => {
+                        const confirmation = signal.needsHumanConfirmation ? ", 需要人工确认" : "";
+
+                        return `${signal.ruleId} (${signal.severity}, ${signal.source}${confirmation})`;
+                      }).join(", ")}
                       {matchingSignals.length > 2 ? ` +${matchingSignals.length - 2}` : ""}
                     </span>
                   </div>
@@ -421,6 +425,8 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
                   <span className={`signal-severity signal-${signal.severity}`}>{signal.severity}</span>
                   <strong>{signal.ruleId}</strong>
                   <span>{signal.category}</span>
+                  <span className={`signal-source signal-source-${signal.source}`}>{signal.source}</span>
+                  {signal.needsHumanConfirmation ? <span className="confirmation-badge">需要人工确认</span> : null}
                   <span>{Math.round(signal.confidence * 100)}%</span>
                 </div>
                 <p className="file-path">{signal.filePath}</p>

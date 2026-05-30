@@ -9,6 +9,8 @@ export type StaticAnalysisSignal = {
   ruleId: string;
   category: "security" | "maintainability" | "test" | "size";
   severity: "low" | "medium" | "high";
+  source: "introduced_by_pr" | "context_only";
+  needsHumanConfirmation: boolean;
   message: string;
   evidence: string;
   confidence: number;
