@@ -28,9 +28,21 @@ https://github.com/cc-c122/AI-PR-Reviewer/pull/1
 
 ### 本地完整模式
 
+macOS / Linux：
+
 ```bash
 pnpm install
 cp .env.example .env
+pnpm prisma:generate
+pnpm prisma:migrate --name init
+pnpm dev
+```
+
+Windows PowerShell：
+
+```powershell
+pnpm install
+Copy-Item .env.example .env
 pnpm prisma:generate
 pnpm prisma:migrate --name init
 pnpm dev
