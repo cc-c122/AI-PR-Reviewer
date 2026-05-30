@@ -65,7 +65,18 @@ button,
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+}
+
+.demo-banner {
+  margin-bottom: 16px;
+  border: 1px solid #f0d58c;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #5d4700;
+  padding: 12px 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .brand,
