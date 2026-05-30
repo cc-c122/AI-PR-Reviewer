@@ -40,6 +40,38 @@ describe("MockReviewModelClient", () => {
       new Set(["bug", "test", "maintainability"]),
     );
   });
+
+  it("uses static analysis line numbers for generated findings", async () => {
+    const report = await generateMockReport({
+      signals: [
+        {
+          id: "src/widget.ts:console-log",
+          filePath: "src/widget.ts",
+          ruleId: "console-log",
+          category: "maintainability",
+          severity: "low",
+          message: "console.log detected.",
+          evidence: "console.log(value)",
+          confidence: 0.62,
+          line: 42
+        }
+      ],
+      skippedFiles: [],
+      riskHints: []
+    });
+
+    expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(42);
+  });
+
+  it("falls back to the first added changed line when no signal line exists", async () => {
+    const report = await generateMockReport({
+      signals: [],
+      skippedFiles: [],
+      riskHints: []
+    });
+
+    expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(41);
+  });
 });
 
 describe("createReviewModelClientFromEnv", () => {
@@ -73,6 +105,7 @@ describe("OpenAICompatibleReviewModelClient", () => {
           severity: "major",
           category: "bug",
           filePath: "src/widget.ts",
+          line: 41,
           title: "Validate widget edge cases",
           evidence: "src/widget.ts changed 30 line(s) in the provided snapshot.",
           suggestion: "Review boundary conditions around the changed widget behavior.",
@@ -132,6 +165,16 @@ describe("OpenAICompatibleReviewModelClient", () => {
   });
 });
 
+async function generateMockReport(staticAnalysis: ReturnType<typeof createModelInput>["staticAnalysis"]) {
+  const input = createModelInput();
+  const client = new MockReviewModelClient();
+
+  return client.generateReview({
+    ...input,
+    staticAnalysis
+  });
+}
+
 function createSnapshot(): PullRequestSnapshot {
   return {
     id: "42",
@@ -153,7 +196,8 @@ function createSnapshot(): PullRequestSnapshot {
         status: "modified",
         additions: 25,
         deletions: 5,
-        changes: 30
+        changes: 30,
+        patch: "@@ -40,0 +41,1 @@\n+console.log(value)"
       }
     ]
   };

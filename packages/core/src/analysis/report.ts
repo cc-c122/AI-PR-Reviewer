@@ -12,6 +12,7 @@ export type StaticAnalysisSignal = {
   message: string;
   evidence: string;
   confidence: number;
+  line?: number;
 };
 
 export type SkippedStaticAnalysisFile = {

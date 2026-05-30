@@ -42,7 +42,7 @@ describe("analyzeReviewContext", () => {
             additions: 3,
             deletions: 0,
             changes: 3,
-            patch: '+ const token = "super-secret-token";\n+ eval(userInput)\n+ element.innerHTML = value'
+            patch: '@@ -9,0 +10,3 @@\n+const token = "super-secret-token";\n+eval(userInput)\n+element.innerHTML = value'
           }
         ]),
       ),
@@ -51,6 +51,35 @@ describe("analyzeReviewContext", () => {
     expect(result.signals.map((signal) => signal.ruleId)).toEqual(
       expect.arrayContaining(["hardcoded-secret", "eval-usage", "dangerous-html"]),
     );
+    expect(result.signals.find((signal) => signal.ruleId === "hardcoded-secret")).toMatchObject({
+      filePath: "src/auth.ts",
+      line: 10
+    });
+    expect(result.signals.find((signal) => signal.ruleId === "eval-usage")).toMatchObject({
+      line: 11
+    });
+  });
+
+  it("adds line numbers to maintainability signals when they match added lines", () => {
+    const result = analyzeReviewContext(
+      buildPullRequestReviewContext(
+        createSnapshot([
+          {
+            path: "src/foo.ts",
+            status: "modified",
+            additions: 1,
+            deletions: 0,
+            changes: 1,
+            patch: "@@ -40,0 +41,1 @@\n+console.log(value)"
+          }
+        ]),
+      ),
+    );
+
+    expect(result.signals.find((signal) => signal.ruleId === "console-log")).toMatchObject({
+      filePath: "src/foo.ts",
+      line: 41
+    });
   });
 
   it("emits missing test signal for source changes without test changes", () => {

@@ -65,7 +65,8 @@ const staticAnalysisSchema = z.object({
     severity: z.enum(["low", "medium", "high"]),
     message: z.string(),
     evidence: z.string(),
-    confidence: z.number()
+    confidence: z.number(),
+    line: z.number().optional()
   })),
   skippedFiles: z.array(z.object({
     filePath: z.string(),

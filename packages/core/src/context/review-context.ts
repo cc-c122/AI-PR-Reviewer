@@ -1,4 +1,5 @@
 import { ChangedFile, PullRequestSnapshot } from "../types/analysis";
+import { ChangedPatchLine, parsePatchChangedLines } from "../analysis/patch-lines";
 
 export type ContextSourceType = "metadata" | "patch" | "file_content" | "test_candidate";
 
@@ -15,6 +16,7 @@ export type ReviewContextFile = {
   deletions: number;
   changes: number;
   patch?: string;
+  changedLines?: ChangedPatchLine[];
   content?: string;
   contentTruncated?: boolean;
   isTestFile: boolean;
@@ -112,6 +114,7 @@ export function buildPullRequestReviewContext(
 
     if (file.patch) {
       contextFile.patch = file.patch;
+      contextFile.changedLines = parsePatchChangedLines(file.patch);
     }
 
     if (contentInput) {

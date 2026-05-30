@@ -36,7 +36,11 @@ describe("buildPullRequestReviewContext", () => {
     });
     expect(context.changedFiles[0]).toMatchObject({
       path: "src/foo.ts",
-      patch: "@@ -1 +1 @@",
+        patch: "@@ -1 +1,2 @@\n export const oldFoo = 1;\n+export const foo = 1;",
+        changedLines: [
+          { line: 1, content: "export const oldFoo = 1;", type: "context" },
+          { line: 2, content: "export const foo = 1;", type: "added" }
+        ],
       content: "export function foo() { return 1; }",
       contentTruncated: false,
       testCandidatePaths: [
@@ -79,7 +83,7 @@ function createSnapshot(): PullRequestSnapshot {
         additions: 1,
         deletions: 1,
         changes: 2,
-        patch: "@@ -1 +1 @@"
+        patch: "@@ -1 +1,2 @@\n export const oldFoo = 1;\n+export const foo = 1;"
       }
     ]
   };

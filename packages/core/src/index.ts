@@ -1,4 +1,5 @@
 export * from "./analysis/analysis-task";
+export * from "./analysis/patch-lines";
 export * from "./analysis/pull-request-url";
 export * from "./analysis/report";
 export * from "./analysis/risk";

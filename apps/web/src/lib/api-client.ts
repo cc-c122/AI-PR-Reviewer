@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 const changedFileSchema = z.object({
   path: z.string(),
@@ -57,7 +57,8 @@ const staticAnalysisSchema = z.object({
     severity: z.enum(["low", "medium", "high"]),
     message: z.string(),
     evidence: z.string(),
-    confidence: z.number()
+    confidence: z.number(),
+    line: z.number().optional()
   })),
   skippedFiles: z.array(z.object({
     filePath: z.string(),
@@ -135,7 +136,7 @@ export async function getAnalysisReport(taskId: string): Promise<AnalysisReport>
     const demo = getDemoAnalysis(taskId);
 
     if (!demo) {
-      throw new Error("未找到 Demo 分析任务。");
+      throw new Error("Demo analysis task was not found.");
     }
 
     return demo.report;
@@ -189,14 +190,15 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         additions: 86,
         deletions: 24,
         changes: 110,
-        patch: "@@ demo patch omitted @@"
+        patch: "@@ -40,0 +42,2 @@\n+console.log(\"analysis started\")\n+return analyze(input)"
       },
       {
         path: "src/services/review-engine.test.ts",
         status: "modified",
         additions: 18,
         deletions: 2,
-        changes: 20
+        changes: 20,
+        patch: "@@ -16,0 +18,1 @@\n+expect(report.findings).toHaveLength(3)"
       }
     ]
   };
@@ -210,6 +212,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         severity: "major",
         category: "bug",
         filePath: "src/services/review-engine.ts",
+        line: 42,
         title: "检查 review-engine 的边界场景",
         evidence: "Demo 变更文件在 review-engine 逻辑中共有 110 行改动。",
         suggestion: "合并前请确认空输入、空 diff 和模型超时路径都已被覆盖。",
@@ -223,6 +226,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         severity: "info",
         category: "test",
         filePath: "src/services/review-engine.test.ts",
+        line: 18,
         title: "确认测试覆盖成功和失败路径",
         evidence: "Demo 快照中包含相关测试文件。",
         suggestion: "请确认测试覆盖 schema 校验失败和空 PR 快照等场景。",
@@ -244,150 +248,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         status: "open"
       }
     ],
-    details: {
-      reviewContextSummary: {
-        files: [
-          {
-            path: "src/services/review-engine.ts",
-            contextSources: [
-              {
-                type: "metadata",
-                filePath: "src/services/review-engine.ts",
-                description: "来自 Pull Request 文件列表的变更文件元数据。"
-              },
-              {
-                type: "patch",
-                filePath: "src/services/review-engine.ts",
-                description: "来自 GitHub Pull Request 文件接口的变更 patch。"
-              },
-              {
-                type: "file_content",
-                filePath: "src/services/review-engine.ts",
-                description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
-              },
-              {
-                type: "test_candidate",
-                filePath: "src/services/review-engine.ts",
-                description: "根据变更文件路径推断出的潜在相关测试路径。"
-              }
-            ],
-            contentAvailable: true,
-            contentTruncated: true,
-            isTestFile: false,
-            testCandidatePaths: [
-              "src/services/review-engine.test.ts",
-              "src/services/review-engine.spec.ts",
-              "tests/review-engine.test.ts"
-            ]
-          },
-          {
-            path: "src/services/review-engine.test.ts",
-            contextSources: [
-              {
-                type: "metadata",
-                filePath: "src/services/review-engine.test.ts",
-                description: "来自 Pull Request 文件列表的变更文件元数据。"
-              },
-              {
-                type: "test_candidate",
-                filePath: "src/services/review-engine.test.ts",
-                description: "变更文件本身就是测试或 spec 文件。"
-              }
-            ],
-            contentAvailable: false,
-            contentTruncated: false,
-            isTestFile: true,
-            testCandidatePaths: ["src/services/review-engine.test.ts"]
-          }
-        ],
-        contextSources: [
-          {
-            type: "metadata",
-            description: "来自 GitHub 的 Pull Request 元数据。"
-          },
-          {
-            type: "metadata",
-            filePath: "src/services/review-engine.ts",
-            description: "来自 Pull Request 文件列表的变更文件元数据。"
-          },
-          {
-            type: "patch",
-            filePath: "src/services/review-engine.ts",
-            description: "来自 GitHub Pull Request 文件接口的变更 patch。"
-          },
-          {
-            type: "file_content",
-            filePath: "src/services/review-engine.ts",
-            description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
-          },
-          {
-            type: "test_candidate",
-            filePath: "src/services/review-engine.ts",
-            description: "根据变更文件路径推断出的潜在相关测试路径。"
-          },
-          {
-            type: "metadata",
-            filePath: "src/services/review-engine.test.ts",
-            description: "来自 Pull Request 文件列表的变更文件元数据。"
-          },
-          {
-            type: "test_candidate",
-            filePath: "src/services/review-engine.test.ts",
-            description: "变更文件本身就是测试或 spec 文件。"
-          }
-        ]
-      },
-      staticAnalysis: {
-        signals: [
-          {
-            id: `${taskId}:large-change`,
-            filePath: "src/services/review-engine.ts",
-            ruleId: "large-change",
-            category: "size",
-            severity: "medium",
-            message: "检测到 review 编排中的服务级大改动。",
-            evidence: "src/services/review-engine.ts 变更 110 行。",
-            confidence: 0.72
-          },
-          {
-            id: `${taskId}:console-log`,
-            filePath: "src/services/review-engine.ts",
-            ruleId: "console-log",
-            category: "maintainability",
-            severity: "low",
-            message: "在变更上下文中检测到调试日志模式。",
-            evidence: "console.log(\"analysis started\")",
-            confidence: 0.62
-          },
-          {
-            id: `${taskId}:test-present`,
-            filePath: "src/services/review-engine.test.ts",
-            ruleId: "test-context-present",
-            category: "test",
-            severity: "low",
-            message: "相关测试文件已包含在本次 PR 中。",
-            evidence: "src/services/review-engine.test.ts 变更 20 行。",
-            confidence: 0.7
-          }
-        ],
-        skippedFiles: [
-          {
-            filePath: "pnpm-lock.yaml",
-            reason: "lockfile"
-          },
-          {
-            filePath: "dist/assets/index.js",
-            reason: "build_artifact"
-          }
-        ],
-        riskHints: [
-          "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
-          "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
-          "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
-        ]
-      },
-      generatedAt: now
-    }
+    details: createDemoDetails(taskId, now)
   };
   const task: AnalysisTask = {
     taskId,
@@ -407,18 +268,167 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
   return result;
 }
 
+function createDemoDetails(taskId: string, generatedAt: string): NonNullable<AnalysisReport["details"]> {
+  return {
+    reviewContextSummary: {
+      files: [
+        {
+          path: "src/services/review-engine.ts",
+          contextSources: [
+            {
+              type: "metadata",
+              filePath: "src/services/review-engine.ts",
+              description: "来自 Pull Request 文件列表的变更文件元数据。"
+            },
+            {
+              type: "patch",
+              filePath: "src/services/review-engine.ts",
+              description: "来自 GitHub Pull Request 文件接口的变更 patch。"
+            },
+            {
+              type: "file_content",
+              filePath: "src/services/review-engine.ts",
+              description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
+            },
+            {
+              type: "test_candidate",
+              filePath: "src/services/review-engine.ts",
+              description: "根据变更文件路径推断出的潜在相关测试路径。"
+            }
+          ],
+          contentAvailable: true,
+          contentTruncated: true,
+          isTestFile: false,
+          testCandidatePaths: [
+            "src/services/review-engine.test.ts",
+            "src/services/review-engine.spec.ts",
+            "tests/review-engine.test.ts"
+          ]
+        },
+        {
+          path: "src/services/review-engine.test.ts",
+          contextSources: [
+            {
+              type: "metadata",
+              filePath: "src/services/review-engine.test.ts",
+              description: "来自 Pull Request 文件列表的变更文件元数据。"
+            },
+            {
+              type: "test_candidate",
+              filePath: "src/services/review-engine.test.ts",
+              description: "变更文件本身就是测试或 spec 文件。"
+            }
+          ],
+          contentAvailable: false,
+          contentTruncated: false,
+          isTestFile: true,
+          testCandidatePaths: ["src/services/review-engine.test.ts"]
+        }
+      ],
+      contextSources: [
+        {
+          type: "metadata",
+          description: "来自 GitHub 的 Pull Request 元数据。"
+        },
+        {
+          type: "metadata",
+          filePath: "src/services/review-engine.ts",
+          description: "来自 Pull Request 文件列表的变更文件元数据。"
+        },
+        {
+          type: "patch",
+          filePath: "src/services/review-engine.ts",
+          description: "来自 GitHub Pull Request 文件接口的变更 patch。"
+        },
+        {
+          type: "file_content",
+          filePath: "src/services/review-engine.ts",
+          description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
+        },
+        {
+          type: "test_candidate",
+          filePath: "src/services/review-engine.ts",
+          description: "根据变更文件路径推断出的潜在相关测试路径。"
+        },
+        {
+          type: "metadata",
+          filePath: "src/services/review-engine.test.ts",
+          description: "来自 Pull Request 文件列表的变更文件元数据。"
+        },
+        {
+          type: "test_candidate",
+          filePath: "src/services/review-engine.test.ts",
+          description: "变更文件本身就是测试或 spec 文件。"
+        }
+      ]
+    },
+    staticAnalysis: {
+      signals: [
+        {
+          id: `${taskId}:large-change`,
+          filePath: "src/services/review-engine.ts",
+          ruleId: "large-change",
+          category: "size",
+          severity: "medium",
+          message: "检测到 review 编排中的服务级大改动。",
+          evidence: "src/services/review-engine.ts 变更 110 行。",
+          confidence: 0.72
+        },
+        {
+          id: `${taskId}:console-log`,
+          filePath: "src/services/review-engine.ts",
+          ruleId: "console-log",
+          category: "maintainability",
+          severity: "low",
+          message: "在变更上下文中检测到调试日志模式。",
+          evidence: "console.log(\"analysis started\")",
+          confidence: 0.62,
+          line: 42
+        },
+        {
+          id: `${taskId}:test-present`,
+          filePath: "src/services/review-engine.test.ts",
+          ruleId: "test-context-present",
+          category: "test",
+          severity: "low",
+          message: "相关测试文件已包含在本次 PR 中。",
+          evidence: "src/services/review-engine.test.ts 变更 20 行。",
+          confidence: 0.7,
+          line: 18
+        }
+      ],
+      skippedFiles: [
+        {
+          filePath: "pnpm-lock.yaml",
+          reason: "lockfile"
+        },
+        {
+          filePath: "dist/assets/index.js",
+          reason: "build_artifact"
+        }
+      ],
+      riskHints: [
+        "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
+        "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
+        "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
+      ]
+    },
+    generatedAt
+  };
+}
+
 function parseDemoPullRequestUrl(value: string) {
   const url = new URL(value);
   const [owner, repo, resource, pullRequestNumber] = url.pathname.split("/").filter(Boolean);
 
   if (url.protocol !== "https:" || url.hostname !== "github.com" || resource !== "pull" || !owner || !repo) {
-    throw new Error("Demo 模式接受类似 https://github.com/org/repo/pull/123 的 GitHub PR URL。");
+    throw new Error("Demo mode accepts GitHub PR URLs like https://github.com/org/repo/pull/123.");
   }
 
   const parsedPullRequestNumber = Number(pullRequestNumber);
 
   if (!Number.isInteger(parsedPullRequestNumber) || parsedPullRequestNumber <= 0) {
-    throw new Error("Demo 模式要求 PR 编号必须是数字。");
+    throw new Error("Demo mode requires a numeric pull request number.");
   }
 
   return {

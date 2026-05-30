@@ -61,12 +61,7 @@ export function analyzeReviewContext(reviewContext: PullRequestReviewContext): S
 }
 
 function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
-  const text = getAnalyzableText(file);
   const signals: StaticAnalysisSignal[] = [];
-
-  if (!text) {
-    return signals;
-  }
 
   const patterns = [
     {
@@ -87,10 +82,10 @@ function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
   ];
 
   for (const rule of patterns) {
-    const evidence = findEvidence(text, rule.pattern);
+    const match = findPatternMatch(file, rule.pattern);
 
-    if (evidence) {
-      signals.push(createSignal(file, rule.ruleId, "security", "high", rule.message, evidence, 0.74));
+    if (match) {
+      signals.push(createSignal(file, rule.ruleId, "security", "high", rule.message, match.evidence, 0.74, match.line));
     }
   }
 
@@ -100,25 +95,25 @@ function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
 function scanMaintainabilityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
   const text = getAnalyzableText(file);
   const signals: StaticAnalysisSignal[] = [];
+  const todoMatch = findPatternMatch(file, /\b(TODO|FIXME)\b/iu);
+  const consoleMatch = findPatternMatch(file, /console\.log\s*\(/u);
 
   if (!text) {
     return signals;
   }
 
   const anyCount = countMatches(text, /\bany\b/gu);
-  const todoEvidence = findEvidence(text, /\b(TODO|FIXME)\b/iu);
-  const consoleEvidence = findEvidence(text, /console\.log\s*\(/u);
 
   if (anyCount >= 5) {
     signals.push(createSignal(file, "many-any", "maintainability", "medium", "Many TypeScript any usages detected.", `${anyCount} occurrences of "any".`, 0.65));
   }
 
-  if (todoEvidence) {
-    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", "TODO/FIXME marker detected in changed context.", todoEvidence, 0.58));
+  if (todoMatch) {
+    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", "TODO/FIXME marker detected in changed context.", todoMatch.evidence, 0.58, todoMatch.line));
   }
 
-  if (consoleEvidence) {
-    signals.push(createSignal(file, "console-log", "maintainability", "low", "console.log detected in changed context.", consoleEvidence, 0.62));
+  if (consoleMatch) {
+    signals.push(createSignal(file, "console-log", "maintainability", "low", "console.log detected in changed context.", consoleMatch.evidence, 0.62, consoleMatch.line));
   }
 
   return signals;
@@ -132,6 +127,7 @@ function createSignal(
   message: string,
   evidence: string,
   confidence: number,
+  line?: number,
 ): StaticAnalysisSignal {
   return {
     id: `${file.path}:${ruleId}`,
@@ -141,7 +137,8 @@ function createSignal(
     severity,
     message,
     evidence,
-    confidence
+    confidence,
+    ...(line !== undefined ? { line } : {})
   };
 }
 
@@ -157,6 +154,23 @@ function buildRiskHints(signals: StaticAnalysisSignal[], skippedFiles: SkippedSt
 
 function getAnalyzableText(file: ReviewContextFile): string {
   return [file.patch, file.content].filter((value): value is string => Boolean(value)).join("\n");
+}
+
+function findPatternMatch(file: ReviewContextFile, pattern: RegExp): { evidence: string; line?: number } | null {
+  const changedLineMatch = file.changedLines
+    ?.filter((line) => line.type === "added")
+    .find((line) => pattern.test(line.content));
+
+  if (changedLineMatch) {
+    return {
+      evidence: changedLineMatch.content,
+      line: changedLineMatch.line
+    };
+  }
+
+  const evidence = findEvidence(getAnalyzableText(file), pattern);
+
+  return evidence ? { evidence } : null;
 }
 
 function getSkipReason(filePath: string): SkippedStaticAnalysisFile["reason"] | null {
