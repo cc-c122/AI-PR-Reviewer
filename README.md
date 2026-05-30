@@ -9,7 +9,6 @@
 GitHub Pages Demo 是静态演示模式：
 
 - 不需要后端
-- 不需要银行卡
 - 不需要 GitHub Token
 - 不需要 OpenAI Key
 - 不会真实调用 GitHub API、后端 API 或 AI 模型
@@ -17,13 +16,15 @@ GitHub Pages Demo 是静态演示模式：
 
 这个 Demo 适合快速查看产品交互、报告结构、分析依据和评论草稿复制能力。真实 GitHub PR 获取、SQLite 持久化和真实 AI provider 调用需要在本地完整模式或服务端部署模式下运行。
 
-## 快速体验
+示例 PR 可直接复制使用：
 
-### 在线 Demo
+```text
+https://github.com/cc-c122/AI-PR-Reviewer/pull/1
+```
 
-打开 [https://cc-c122.github.io/AI-PR-Reviewer/](https://cc-c122.github.io/AI-PR-Reviewer/)，输入任意形如 `https://github.com/org/repo/pull/123` 的 PR URL，即可看到静态 mock 报告。
+这个 PR 会长期保持 open，里面包含少量故意设计的 Review 问题，适合在本地完整模式中作为真实 GitHub PR 输入样本。
 
-示例 PR：[demo: intentionally flawed review example](https://github.com/cc-c122/AI-PR-Reviewer/pull/1)。这个 PR 会长期保持 open，里面包含少量故意设计的 Review 问题，适合在本地完整模式中作为真实 GitHub PR 输入样本。
+## 完整体验
 
 ### 本地完整模式
 
