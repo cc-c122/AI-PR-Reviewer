@@ -42,7 +42,34 @@ describe("MockReviewModelClient", () => {
     );
   });
 
-  it("uses introduced static analysis line numbers for generated findings", async () => {
+  it("uses precise introduced security signal line numbers for bug findings", async () => {
+    const report = await generateMockReport({
+      signals: [
+        {
+          id: "src/widget.ts:hardcoded-secret",
+          filePath: "src/widget.ts",
+          ruleId: "hardcoded-secret",
+          category: "security",
+          severity: "high",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
+          message: "可能存在硬编码 token。",
+          evidence: "const token = \"super-secret-token\"",
+          confidence: 0.74,
+          line: 42
+        }
+      ],
+      skippedFiles: [],
+      riskHints: []
+    });
+
+    const finding = report.findings.find((item) => item.category === "security");
+
+    expect(finding?.line).toBe(42);
+    expect(finding?.title).toContain("安全风险");
+  });
+
+  it("uses precise introduced maintainability signal line numbers for maintainability findings", async () => {
     const report = await generateMockReport({
       signals: [
         {
@@ -63,17 +90,34 @@ describe("MockReviewModelClient", () => {
       riskHints: []
     });
 
-    expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(42);
+    expect(report.findings.find((finding) => finding.category === "maintainability")?.line).toBe(42);
   });
 
-  it("falls back to the first added changed line when no introduced signal line exists", async () => {
+  it("does not reuse a default added line for file-level findings", async () => {
     const report = await generateMockReport({
-      signals: [],
+      signals: [
+        {
+          id: "src/widget.ts:missing-test-change",
+          filePath: "src/widget.ts",
+          ruleId: "missing-test-change",
+          category: "test",
+          severity: "medium",
+          source: "introduced_by_pr",
+          needsHumanConfirmation: false,
+          message: "本次 PR 修改了源代码，但没有检测到测试文件变更。",
+          evidence: "候选相关测试：src/widget.test.ts。",
+          confidence: 0.68,
+          line: 41
+        }
+      ],
       skippedFiles: [],
       riskHints: []
     });
 
-    expect(report.findings.find((finding) => finding.filePath === "src/widget.ts")?.line).toBe(41);
+    expect(report.findings.find((finding) => finding.category === "bug")?.line).toBeUndefined();
+    expect(report.findings.find((finding) => finding.category === "test")?.line).toBeUndefined();
+    expect(report.findings.find((finding) => finding.category === "maintainability")?.line).toBeUndefined();
+    expect(new Set(report.findings.map((finding) => finding.line).filter(Boolean)).size).toBe(0);
   });
 
   it("marks context-only static signal evidence as needing human confirmation", async () => {
@@ -100,7 +144,7 @@ describe("MockReviewModelClient", () => {
     const finding = report.findings.find((item) => item.filePath === "src/widget.ts");
 
     expect(finding?.evidence).toContain("需要人工确认");
-    expect(finding?.line).toBe(41);
+    expect(finding?.line).toBeUndefined();
     expect(finding?.blocking).toBe(false);
   });
 
@@ -137,7 +181,7 @@ describe("MockReviewModelClient", () => {
 
     expect(report.riskLevel).toBe("high");
     expect(bugFinding?.blocking).toBe(false);
-    expect(bugFinding?.line).toBe(41);
+    expect(bugFinding?.line).toBeUndefined();
     expect(bugFinding?.evidence).toContain("仅上下文发现");
   });
 });
@@ -207,6 +251,102 @@ describe("OpenAICompatibleReviewModelClient", () => {
     });
 
     await expect(client.generateReview(input)).resolves.toEqual(expectedReport);
+  });
+
+  it("drops model-provided finding lines that cannot be verified", async () => {
+    const client = new OpenAICompatibleReviewModelClient({
+      apiKey: "test-key",
+      fetch: async () =>
+        jsonResponse({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  summary: "该 PR 修改了 widget 行为。",
+                  riskLevel: "medium",
+                  findings: [
+                    {
+                      id: "task_123:bug:widget",
+                      taskId: "task_123",
+                      severity: "major",
+                      category: "bug",
+                      filePath: "src/widget.ts",
+                      line: 999,
+                      title: "检查 widget 边界场景",
+                      evidence: "模型返回了无法验证的行号。",
+                      suggestion: "应丢弃无法从上下文验证的行号。",
+                      confidence: 0.75,
+                      blocking: true,
+                      status: "open"
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+    });
+
+    const report = await client.generateReview(createModelInput());
+
+    expect(report.findings[0]?.line).toBeUndefined();
+  });
+
+  it("keeps model-provided finding lines that match changed lines or static signals", async () => {
+    const input = createModelInput();
+
+    input.staticAnalysis.signals = [
+      {
+        id: "src/widget.ts:console-log",
+        filePath: "src/widget.ts",
+        ruleId: "console-log",
+        category: "maintainability",
+        severity: "low",
+        source: "introduced_by_pr",
+        needsHumanConfirmation: false,
+        message: "变更上下文中检测到 console.log 调试输出。",
+        evidence: "console.log(value)",
+        confidence: 0.62,
+        line: 42
+      }
+    ];
+
+    const client = new OpenAICompatibleReviewModelClient({
+      apiKey: "test-key",
+      fetch: async () =>
+        jsonResponse({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  summary: "该 PR 修改了 widget 行为。",
+                  riskLevel: "medium",
+                  findings: [
+                    {
+                      id: "task_123:maintainability:widget",
+                      taskId: "task_123",
+                      severity: "minor",
+                      category: "maintainability",
+                      filePath: "src/widget.ts",
+                      line: 42,
+                      title: "移除调试输出",
+                      evidence: "静态分析信号 console-log 指向该新增行。",
+                      suggestion: "合并前请移除调试日志。",
+                      confidence: 0.7,
+                      blocking: false,
+                      status: "open"
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+    });
+
+    const report = await client.generateReview(input);
+
+    expect(report.findings[0]?.line).toBe(42);
   });
 
   it("throws a clear error when model output fails schema validation", async () => {

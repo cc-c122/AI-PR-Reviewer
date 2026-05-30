@@ -399,6 +399,7 @@ dd {
 .signal-severity,
 .signal-source,
 .confirmation-badge,
+.file-level-tag,
 .finding-tags span,
 .context-sources span,
 .blocking-tag {
@@ -438,7 +439,8 @@ dd {
 }
 
 .count-badge,
-.finding-tags span {
+.finding-tags span,
+.file-level-tag {
   background: #edf3f5;
   color: #31545d;
 }
@@ -517,6 +519,10 @@ dd {
 }
 
 .file-path {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 12px 0;
   color: #1f4f59;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

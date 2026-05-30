@@ -1,6 +1,6 @@
 import { AnalysisReport } from "@ai-pr-reviewer/core";
 import { z } from "zod";
-import { modelReviewOutputSchema } from "../validators/review-output";
+import { modelReviewOutputSchema, type ModelReviewOutput } from "../validators/review-output";
 import type { ReviewModelClient, ReviewModelInput } from "../client";
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
@@ -109,7 +109,7 @@ export class OpenAICompatibleReviewModelClient implements ReviewModelClient {
       );
     }
 
-    return report.data;
+    return sanitizeFindingLines(report.data, input);
   }
 }
 
@@ -127,6 +127,7 @@ function buildSystemPrompt(): string {
     "Findings based only on context_only signals should be non-blocking and lower confidence.",
     "Prefer introduced_by_pr staticAnalysis signals for actionable findings.",
     "If evidence comes from changedLines, patch, or a staticAnalysis signal, fill ReviewFinding.line whenever a precise line is available.",
+    "For file-level findings such as missing tests, large changes, broad maintainability scope, or generic boundary-case review, omit ReviewFinding.line.",
     "Do not invent line numbers. Omit line when the exact line is uncertain.",
     "ReviewFinding.line must come only from reviewContext.changedFiles[].changedLines[].line or staticAnalysis.signals[].line.",
     "Do not assign line numbers from context_only signals unless a precise changed line is provided.",
@@ -148,6 +149,44 @@ function buildPromptInput(input: ReviewModelInput) {
     reviewContext: input.reviewContext,
     staticAnalysis: input.staticAnalysis
   };
+}
+
+function sanitizeFindingLines(output: ModelReviewOutput, input: ReviewModelInput): ModelReviewOutput {
+  return {
+    ...output,
+    findings: output.findings.map((finding) => {
+      if (finding.line === undefined) {
+        return finding;
+      }
+
+      if (isValidFindingLine(finding.filePath, finding.line, input)) {
+        return finding;
+      }
+
+      return omitFindingLine(finding);
+    })
+  };
+}
+
+function omitFindingLine(finding: ModelReviewOutput["findings"][number]): ModelReviewOutput["findings"][number] {
+  const findingWithoutLine = { ...finding };
+  delete findingWithoutLine.line;
+
+  return findingWithoutLine;
+}
+
+function isValidFindingLine(filePath: string, line: number, input: ReviewModelInput): boolean {
+  const changedLineMatches = input.reviewContext.changedFiles.some(
+    (file) =>
+      file.path === filePath &&
+      file.changedLines?.some((changedLine) => changedLine.type === "added" && changedLine.line === line),
+  );
+
+  if (changedLineMatches) {
+    return true;
+  }
+
+  return input.staticAnalysis.signals.some((signal) => signal.filePath === filePath && signal.line === line);
 }
 
 async function parseJsonResponse(response: Response): Promise<unknown> {
