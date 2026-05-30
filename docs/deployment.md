@@ -1,54 +1,45 @@
 # Deployment
 
-## GitHub Pages Static Demo
+## 当前公开入口
 
-This repository includes a no-card static demo powered by GitHub Pages:
+当前公开入口为 GitHub Pages 静态 Demo：
 
-https://cc-c122.github.io/AI-PR-Reviewer/
+- https://cc-c122.github.io/AI-PR-Reviewer/
 
-The Pages workflow builds only `apps/web` with:
+该版本使用浏览器内置 mock 数据，不会请求 GitHub API、后端服务或 AI 模型。它适合用于公开展示前端交互、报告结构、分析依据和评论草稿复制流程。
+
+GitHub Pages workflow 只构建 `apps/web`，构建时设置：
 
 ```text
 GITHUB_PAGES=true
 VITE_DEMO_MODE=true
 ```
 
-In demo mode, the frontend validates GitHub PR URLs and renders deterministic
-sample analysis data in the browser. It does not call the Fastify API, GitHub,
-Prisma, or an AI provider. This makes it suitable for a free public demo link.
+## 可选：部署完整服务端版本
 
-## Render Free Web Service
+如需部署完整服务端版本，可参考以下可选 Render 配置。该方案会用单个 Web Service 同时提供 Fastify API 和构建后的 React 页面。前端使用同源 `/api/*` 调用，因此不需要拆成独立 Vercel 前端和 API 地址。
 
-This project supports a single Render Web Service that serves both the Fastify API
-and the built React app. The frontend calls same-origin `/api/*`, so no separate
-Vercel or API URL is required.
+## 可选 Render 配置
 
-Live demo placeholder:
-
-https://YOUR_RENDER_DEMO_URL_HERE
-
-## Render Settings
-
-Create a new Render Web Service from this repository.
+在 Render 中从本仓库创建一个新的 Web Service：
 
 - Runtime: Node
 - Build command: `pnpm render:build`
 - Start command: `pnpm render:start`
 - Instance type: Free
 
-Render provides a `PORT` environment variable. The API also accepts `API_PORT`,
-but `PORT` is preferred for hosted production.
+Render 会提供 `PORT` 环境变量。API 也支持 `API_PORT`，但在托管生产环境中优先使用 `PORT`。
 
-## Environment Variables
+## 环境变量
 
-Minimum demo configuration:
+最小服务端配置：
 
 ```text
 NODE_ENV=production
 DATABASE_URL=file:./demo.db
 ```
 
-Optional configuration:
+可选配置：
 
 ```text
 GITHUB_TOKEN=
@@ -58,41 +49,29 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 LOG_LEVEL=info
 ```
 
-If `OPENAI_API_KEY` is omitted, the deployed demo uses `MockReviewModelClient`
-and still returns deterministic structured reports. Public GitHub PRs work
-without `GITHUB_TOKEN`, though rate limits are lower.
+如果省略 `OPENAI_API_KEY`，服务端版本会使用 `MockReviewModelClient` 并返回确定性的结构化报告。公开 GitHub PR 在没有 `GITHUB_TOKEN` 时也可以尝试获取，但 API rate limit 会更低。
 
-## Startup Flow
+## 启动流程
 
-`pnpm render:build` runs Prisma client generation and builds every workspace,
-including `apps/web/dist`.
+`pnpm render:build` 会生成 Prisma client，并构建所有 workspace，包括 `apps/web/dist`。
 
-`pnpm render:start` runs:
+`pnpm render:start` 会运行：
 
 ```bash
 prisma migrate deploy || node scripts/apply-sqlite-schema.mjs && pnpm --filter @ai-pr-reviewer/api start
 ```
 
-The Prisma migration command is preferred. The fallback script applies the
-checked-in SQLite schema directly from `prisma/migrations` so the free demo can
-still boot in constrained environments where Prisma's schema engine is
-unavailable.
+优先使用 Prisma migration。fallback 脚本会直接从 `prisma/migrations` 应用已提交的 SQLite schema，让受限环境中的服务也能启动。
 
-The Fastify server then:
+Fastify 服务随后会：
 
-- Serves `/api/analysis-tasks/*` from the API routes.
-- Serves `/api/health` for health checks.
-- Serves `apps/web/dist` for the React app in production.
-- Falls back to `index.html` for non-API routes.
+- 提供 `/api/analysis-tasks/*` API routes。
+- 提供 `/api/health` 健康检查。
+- 在 production 中提供 `apps/web/dist` 静态文件。
+- 对非 API 路由 fallback 到 `index.html`。
 
-## SQLite Notes
+## SQLite 注意事项
 
-The free Render filesystem is suitable for a lightweight demo, but it is not a
-durable production database. Use `DATABASE_URL=file:./demo.db` for the free
-demo. Prisma resolves relative SQLite paths from the `prisma/` directory, so
-this creates `prisma/demo.db`. SQLite database files are git ignored and must
-not be committed.
+Render Free filesystem 可用于轻量演示，但不应视为可靠的生产级持久化数据库。可选服务端部署可以使用 `DATABASE_URL=file:./demo.db`。Prisma 会从 `prisma/` 目录解析相对 SQLite 路径，因此该配置会创建 `prisma/demo.db`。SQLite 数据库文件已被 git ignore，不应提交到仓库。
 
-Do not store GitHub tokens, OpenAI keys, request headers, or other secrets in the
-database. The current persistence layer stores task metadata, PR snapshots,
-changed-file JSON, report summaries, risk levels, and finding JSON only.
+不要把 GitHub token、OpenAI key、请求 headers 或其他敏感信息写入数据库。当前持久化层只保存任务元数据、PR snapshot、changed-file JSON、报告摘要、风险等级和 finding JSON。
