@@ -23,6 +23,73 @@ type SignalSeverityFilter = (typeof signalSeverityOptions)[number];
 type ReportDetails = NonNullable<AnalysisReport["details"]>;
 type StaticSignal = ReportDetails["staticAnalysis"]["signals"][number];
 
+const findingSeverityLabels = {
+  critical: "严重",
+  major: "主要",
+  minor: "次要",
+  info: "提示"
+} as const;
+
+const findingCategoryLabels = {
+  bug: "缺陷",
+  security: "安全",
+  performance: "性能",
+  maintainability: "可维护性",
+  test: "测试",
+  docs: "文档",
+  style: "风格"
+} as const;
+
+const riskLevelLabels = {
+  high: "高",
+  medium: "中",
+  low: "低",
+  unknown: "未知"
+} as const;
+
+const taskStatusLabels = {
+  queued: "排队中",
+  running: "运行中",
+  completed: "已完成",
+  failed: "失败"
+} as const;
+
+const signalSeverityLabels = {
+  high: "高",
+  medium: "中",
+  low: "低"
+} as const;
+
+const signalSeverityFilterLabels = {
+  all: "全部",
+  ...signalSeverityLabels
+} as const;
+
+const signalCategoryLabels = {
+  security: "安全",
+  maintainability: "可维护性",
+  test: "测试",
+  size: "规模"
+} as const;
+
+const signalSourceLabels = {
+  introduced_by_pr: "本 PR 引入",
+  context_only: "仅上下文发现"
+} as const;
+
+const contextSourceLabels = {
+  metadata: "元数据",
+  patch: "Patch",
+  file_content: "文件内容",
+  test_candidate: "测试候选"
+} as const;
+
+const skippedReasonLabels = {
+  generated: "生成文件",
+  lockfile: "锁文件",
+  build_artifact: "构建产物"
+} as const;
+
 export function App() {
   const [viewState, setViewState] = useState<ViewState>({ status: "empty" });
 
@@ -59,10 +126,10 @@ export function App() {
         <div className="review-layout">
           <section className="review-panel">
             <div className="panel-heading">
-              <p className="eyebrow">Review 工作流</p>
+              <p className="eyebrow">评审工作流</p>
               <h1>分析 GitHub Pull Request</h1>
               <p>
-                粘贴公开 PR URL 后创建分析任务，获取生成报告，并在人工判断前先查看结构化 Review 结果。
+                粘贴公开 PR URL 后创建分析任务，获取生成报告，并在人工判断前先查看结构化评审结果。
               </p>
             </div>
             <PrInputForm disabled={viewState.status === "loading"} onSubmit={handleAnalyze} />
@@ -88,7 +155,7 @@ function DemoModeBanner() {
 
   return (
     <div className="demo-banner" role="note">
-      <strong>Demo Mode：</strong>
+      <strong>演示模式：</strong>
       当前在线版本使用浏览器内置示例数据，不会请求 GitHub API、后端服务或 AI 模型。真实 PR 分析链路请查看 README，或在本地启动完整模式。
     </div>
   );
@@ -134,11 +201,11 @@ function RunSummary({ viewState }: { viewState: ViewState }) {
       <dl className="run-summary">
         <div>
           <dt>状态</dt>
-          <dd>{viewState.task.status}</dd>
+          <dd>{taskStatusLabels[viewState.task.status]}</dd>
         </div>
         <div>
           <dt>风险</dt>
-          <dd className={`risk-value risk-${viewState.report.riskLevel}`}>{viewState.report.riskLevel}</dd>
+          <dd className={`risk-value risk-${viewState.report.riskLevel}`}>{riskLevelLabels[viewState.report.riskLevel]}</dd>
         </div>
         <div>
           <dt>问题</dt>
@@ -164,7 +231,7 @@ function RunSummary({ viewState }: { viewState: ViewState }) {
     return <p className="muted">修正 URL 或 API 问题后再重新分析。</p>;
   }
 
-  return <p className="muted">输入公开 GitHub PR URL，开始 MVP Review 流程。</p>;
+  return <p className="muted">输入公开 GitHub PR URL，开始 MVP 评审流程。</p>;
 }
 
 function ReportView({ viewState }: { viewState: ViewState }) {
@@ -175,7 +242,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
       <section className="report-empty loading-state">
         <Loader2 aria-hidden="true" />
         <h2>正在加载报告</h2>
-        <p>API 正在获取 PR 数据并生成确定性的 MVP Review 报告。</p>
+        <p>API 正在获取 PR 数据并生成确定性的 MVP 评审报告。</p>
       </section>
     );
   }
@@ -216,10 +283,10 @@ function ReportView({ viewState }: { viewState: ViewState }) {
   }
 
   return (
-    <section className="report-grid" aria-label="Analysis report">
+    <section className="report-grid" aria-label="分析报告">
       <article className="report-section pr-overview">
         <div>
-          <p className="eyebrow">Pull Request</p>
+          <p className="eyebrow">拉取请求</p>
           <h2>{snapshot?.title ?? `${task.repositoryOwner}/${task.repositoryName}#${task.pullRequestNumber}`}</h2>
           <p className="muted">
             {task.repositoryOwner}/{task.repositoryName} #{task.pullRequestNumber}
@@ -242,7 +309,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
         <div className="section-title">
           <div>
             <p className="eyebrow">摘要</p>
-            <h2>Review 简报</h2>
+            <h2>评审简报</h2>
           </div>
           <div className="section-actions">
             <button
@@ -251,20 +318,20 @@ function ReportView({ viewState }: { viewState: ViewState }) {
               onClick={() => copyReviewText("summary", formatReviewSummary(report, task))}
             >
               <Copy aria-hidden="true" />
-              复制完整 Review 摘要
+              复制完整评审摘要
             </button>
-            <span className={`risk-badge risk-${report.riskLevel}`}>{report.riskLevel}</span>
+            <span className={`risk-badge risk-${report.riskLevel}`}>{riskLevelLabels[report.riskLevel]}风险</span>
           </div>
         </div>
-        {copiedAction === "summary" ? <p className="copy-status">已复制完整 Review 摘要。</p> : null}
+        {copiedAction === "summary" ? <p className="copy-status">已复制完整评审摘要。</p> : null}
         <p>{report.summary}</p>
       </article>
 
       <article className="report-section findings-section">
         <div className="section-title">
           <div>
-            <p className="eyebrow">问题</p>
-            <h2>结构化 Review 项</h2>
+            <p className="eyebrow">问题项</p>
+            <h2>结构化评审项</h2>
           </div>
           <div className="section-actions">
             <button
@@ -284,12 +351,12 @@ function ReportView({ viewState }: { viewState: ViewState }) {
             <span className="count-badge">{sortedFindings.length}</span>
           </div>
         </div>
-        {copiedAction === "blocking" ? <p className="copy-status">已复制阻塞 Review 评论。</p> : null}
+        {copiedAction === "blocking" ? <p className="copy-status">已复制阻塞评审评论。</p> : null}
 
         {sortedFindings.length === 0 ? (
           <div className="empty-findings">
             <CheckCircle2 aria-hidden="true" />
-            <p>这份报告没有返回 Review 问题。</p>
+            <p>这份报告没有返回评审问题。</p>
           </div>
         ) : (
           <div className="finding-list">
@@ -299,66 +366,66 @@ function ReportView({ viewState }: { viewState: ViewState }) {
               const copyLabel = `finding:${finding.id}`;
 
               return (
-              <article className="finding-card" key={finding.id}>
-                <header>
-                  <div>
-                    <div className="finding-tags">
-                      <span className={`severity severity-${finding.severity}`}>{finding.severity}</span>
-                      <span>{finding.category}</span>
-                      {finding.blocking ? <span className="blocking-tag">blocking</span> : null}
+                <article className="finding-card" key={finding.id}>
+                  <header>
+                    <div>
+                      <div className="finding-tags">
+                        <span className={`severity severity-${finding.severity}`}>{findingSeverityLabels[finding.severity]}</span>
+                        <span>{findingCategoryLabels[finding.category]}</span>
+                        {finding.blocking ? <span className="blocking-tag">阻塞</span> : null}
+                      </div>
+                      <h3>{finding.title}</h3>
                     </div>
-                    <h3>{finding.title}</h3>
-                  </div>
-                  <div className="finding-actions">
-                    <span className="confidence">{Math.round(finding.confidence * 100)}%</span>
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => copyReviewText(copyLabel, commentMarkdown)}
-                    >
-                      <Copy aria-hidden="true" />
-                      复制评论
-                    </button>
-                  </div>
-                </header>
-                {copiedAction === copyLabel ? <p className="copy-status">已复制评论 Markdown。</p> : null}
-                <p className="file-path">
-                  {prFilesUrl ? (
-                    <a href={prFilesUrl} target="_blank" rel="noreferrer">
-                      {finding.filePath}
-                      {finding.line ? `:${finding.line}` : ""}
-                    </a>
-                  ) : (
-                    <>
-                      {finding.filePath}
-                      {finding.line ? `:${finding.line}` : ""}
-                    </>
-                  )}
-                </p>
-                <dl className="finding-detail">
-                  <div>
-                    <dt>证据</dt>
-                    <dd>{finding.evidence}</dd>
-                  </div>
-                  <div>
-                    <dt>建议</dt>
-                    <dd>{finding.suggestion}</dd>
-                  </div>
-                </dl>
-                {matchingSignals.length > 0 ? (
-                  <div className="rule-evidence">
-                    <strong>规则证据</strong>
-                    <span>
-                      {matchingSignals.slice(0, 2).map((signal) => {
-                        const confirmation = signal.needsHumanConfirmation ? ", 需要人工确认" : "";
+                    <div className="finding-actions">
+                      <span className="confidence">置信度 {Math.round(finding.confidence * 100)}%</span>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => copyReviewText(copyLabel, commentMarkdown)}
+                      >
+                        <Copy aria-hidden="true" />
+                        复制评论
+                      </button>
+                    </div>
+                  </header>
+                  {copiedAction === copyLabel ? <p className="copy-status">已复制评论 Markdown。</p> : null}
+                  <p className="file-path">
+                    {prFilesUrl ? (
+                      <a href={prFilesUrl} target="_blank" rel="noreferrer">
+                        {finding.filePath}
+                        {finding.line ? `:${finding.line}` : ""}
+                      </a>
+                    ) : (
+                      <>
+                        {finding.filePath}
+                        {finding.line ? `:${finding.line}` : ""}
+                      </>
+                    )}
+                  </p>
+                  <dl className="finding-detail">
+                    <div>
+                      <dt>证据</dt>
+                      <dd>{finding.evidence}</dd>
+                    </div>
+                    <div>
+                      <dt>建议</dt>
+                      <dd>{finding.suggestion}</dd>
+                    </div>
+                  </dl>
+                  {matchingSignals.length > 0 ? (
+                    <div className="rule-evidence">
+                      <strong>规则证据</strong>
+                      <span>
+                        {matchingSignals.slice(0, 2).map((signal) => {
+                          const confirmation = signal.needsHumanConfirmation ? "，需要人工确认" : "";
 
-                        return `${signal.ruleId} (${signal.severity}, ${signal.source}${confirmation})`;
-                      }).join(", ")}
-                      {matchingSignals.length > 2 ? ` +${matchingSignals.length - 2}` : ""}
-                    </span>
-                  </div>
-                ) : null}
-              </article>
+                          return `${signal.ruleId}（${signalSeverityLabels[signal.severity]}，${signalSourceLabels[signal.source]}${confirmation}）`;
+                        }).join(", ")}
+                        {matchingSignals.length > 2 ? ` +${matchingSignals.length - 2}` : ""}
+                      </span>
+                    </div>
+                  ) : null}
+                </article>
               );
             })}
           </div>
@@ -384,15 +451,15 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
         <div>
           <p className="eyebrow">分析依据</p>
           <h2>分析证据</h2>
-          <p className="muted">用于支撑 Review 判断的上下文来源、规则信号和已跳过文件。</p>
+          <p className="muted">用于支撑评审判断的上下文来源、规则信号和已跳过文件。</p>
         </div>
         <span className="count-badge">{details.reviewContextSummary.files.length} 个文件</span>
       </div>
 
-      <div className="source-stats" aria-label="Context source statistics">
+      <div className="source-stats" aria-label="上下文来源统计">
         {(["metadata", "patch", "file_content", "test_candidate"] as const).map((sourceType) => (
           <div key={sourceType}>
-            <dt>{sourceType}</dt>
+            <dt>{contextSourceLabels[sourceType]}</dt>
             <dd>{sourceCounts[sourceType] ?? 0}</dd>
           </div>
         ))}
@@ -421,7 +488,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
             >
               {signalSeverityOptions.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {signalSeverityFilterLabels[option]}
                 </option>
               ))}
             </select>
@@ -435,12 +502,12 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
             {filteredSignals.map((signal) => (
               <article className="signal-row" key={signal.id}>
                 <div className="signal-header">
-                  <span className={`signal-severity signal-${signal.severity}`}>{signal.severity}</span>
+                  <span className={`signal-severity signal-${signal.severity}`}>{signalSeverityLabels[signal.severity]}</span>
                   <strong>{signal.ruleId}</strong>
-                  <span>{signal.category}</span>
-                  <span className={`signal-source signal-source-${signal.source}`}>{signal.source}</span>
+                  <span>{signalCategoryLabels[signal.category]}</span>
+                  <span className={`signal-source signal-source-${signal.source}`}>{signalSourceLabels[signal.source]}</span>
                   {signal.needsHumanConfirmation ? <span className="confirmation-badge">需要人工确认</span> : null}
-                  <span>{Math.round(signal.confidence * 100)}%</span>
+                  <span>置信度 {Math.round(signal.confidence * 100)}%</span>
                 </div>
                 <p className="file-path">{signal.filePath}</p>
                 <p>{signal.message}</p>
@@ -472,13 +539,13 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
               </dl>
               <div className="context-sources">
                 {file.contextSources.map((source) => (
-                  <span key={`${file.path}:${source.type}:${source.description}`}>{source.type}</span>
+                  <span key={`${file.path}:${source.type}:${source.description}`}>{contextSourceLabels[source.type]}</span>
                 ))}
               </div>
               <ul className="compact-list">
                 {file.contextSources.map((source) => (
                   <li key={`${file.path}:${source.type}:${source.description}:detail`}>
-                    {source.type}: {source.description}
+                    {contextSourceLabels[source.type]}：{source.description}
                   </li>
                 ))}
               </ul>
@@ -504,7 +571,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
             <ul className="compact-list mono-list">
               {details.staticAnalysis.skippedFiles.map((file) => (
                 <li key={`${file.filePath}:${file.reason}`}>
-                  {file.filePath} <span>{file.reason}</span>
+                  {file.filePath} <span>{skippedReasonLabels[file.reason]}</span>
                 </li>
               ))}
             </ul>

@@ -33,7 +33,7 @@ describe("MockReviewModelClient", () => {
 
     expect(() => modelReviewOutputSchema.parse(report)).not.toThrow();
     expect(report.riskLevel).toBe("medium");
-    expect(report.summary).toContain("Mock Review");
+    expect(report.summary).toContain("模拟评审");
     expect(report.findings[0]?.title).toContain("边界场景");
     expect(report.findings[0]?.evidence).toContain("变更 30 行");
     expect(report.findings[0]?.suggestion).toContain("空值处理");
@@ -53,7 +53,7 @@ describe("MockReviewModelClient", () => {
           severity: "low",
           source: "introduced_by_pr",
           needsHumanConfirmation: false,
-          message: "console.log detected.",
+          message: "变更上下文中检测到 console.log 调试输出。",
           evidence: "console.log(value)",
           confidence: 0.62,
           line: 42
@@ -87,7 +87,7 @@ describe("MockReviewModelClient", () => {
           severity: "low",
           source: "context_only",
           needsHumanConfirmation: true,
-          message: "Related context contains many any usages.",
+          message: "相关文件上下文中存在较多 TypeScript any，需要人工确认是否与本 PR 相关。",
           evidence: "相关文件上下文中存在 6 个 any，需确认是否与本 PR 相关。",
           confidence: 0.35,
           line: 99
@@ -121,7 +121,7 @@ describe("MockReviewModelClient", () => {
             severity: "medium",
             source: "context_only",
             needsHumanConfirmation: true,
-            message: "Possible hardcoded secret in related context.",
+            message: "相关上下文中可能存在硬编码密钥。",
             evidence: "仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
             confidence: 0.45,
             line: 99
@@ -138,7 +138,7 @@ describe("MockReviewModelClient", () => {
     expect(report.riskLevel).toBe("high");
     expect(bugFinding?.blocking).toBe(false);
     expect(bugFinding?.line).toBe(41);
-    expect(bugFinding?.evidence).toContain("context_only");
+    expect(bugFinding?.evidence).toContain("仅上下文发现");
   });
 });
 
@@ -164,7 +164,7 @@ describe("OpenAICompatibleReviewModelClient", () => {
   it("returns a schema-valid report from a valid model response", async () => {
     const input = createModelInput();
     const expectedReport = {
-      summary: "The PR changes widget behavior and needs focused review.",
+      summary: "该 PR 修改了 widget 行为，需要重点评审。",
       riskLevel: "medium",
       findings: [
         {
@@ -174,9 +174,9 @@ describe("OpenAICompatibleReviewModelClient", () => {
           category: "bug",
           filePath: "src/widget.ts",
           line: 41,
-          title: "Validate widget edge cases",
-          evidence: "src/widget.ts changed 30 line(s) in the provided snapshot.",
-          suggestion: "Review boundary conditions around the changed widget behavior.",
+          title: "校验 widget 边界场景",
+          evidence: "src/widget.ts 在快照中变更 30 行。",
+          suggestion: "请检查 widget 行为变更周围的边界条件。",
           confidence: 0.75,
           blocking: true,
           status: "open"
