@@ -386,6 +386,8 @@ dd {
 .count-badge,
 .severity,
 .signal-severity,
+.signal-source,
+.confirmation-badge,
 .finding-tags span,
 .context-sources span,
 .blocking-tag {
@@ -625,6 +627,28 @@ dd {
 
 .signal-header strong {
   color: #172026;
+}
+
+.signal-source {
+  background: #e8f0f1;
+  color: #38565e;
+  text-transform: none;
+}
+
+.signal-source-introduced_by_pr {
+  background: #dff1e7;
+  color: #1f6f45;
+}
+
+.signal-source-context_only {
+  background: #fff0cf;
+  color: #7d5700;
+}
+
+.confirmation-badge {
+  background: #fff0cf;
+  color: #7d5700;
+  text-transform: none;
 }
 
 .signal-row p {

@@ -36,6 +36,8 @@ describe("generateAnalysisReport", () => {
           ruleId: "console-log",
           category: "maintainability" as const,
           severity: "low" as const,
+          source: "introduced_by_pr" as const,
+          needsHumanConfirmation: false,
           message: "console.log detected.",
           evidence: "console.log(value)",
           confidence: 0.62
@@ -116,6 +118,8 @@ describe("generateAnalysisReport", () => {
             ruleId: "hardcoded-secret",
             category: "security",
             severity: "high",
+            source: "introduced_by_pr",
+            needsHumanConfirmation: false,
             message: "Possible hardcoded token/password/secret pattern.",
             evidence: "const token = \"super-secret-value\";",
             confidence: 0.74

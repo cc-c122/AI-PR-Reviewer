@@ -157,6 +157,8 @@ describe("mapAnalysisTaskRecord", () => {
             ruleId: "console-log",
             category: "maintainability",
             severity: "low",
+            source: "introduced_by_pr",
+            needsHumanConfirmation: false,
             message: "console.log detected.",
             evidence: "console.log(value)",
             confidence: 0.62
