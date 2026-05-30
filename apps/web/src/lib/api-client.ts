@@ -159,7 +159,7 @@ export async function analyzePullRequest(pullRequestUrl: string): Promise<Analys
 
 const demoAnalyses = new Map<string, AnalysisResult>();
 
-function isDemoMode(): boolean {
+export function isDemoMode(): boolean {
   return import.meta.env.VITE_DEMO_MODE === "true";
 }
 

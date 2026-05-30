@@ -1,7 +1,7 @@
-import { AlertCircle, CheckCircle2, Copy, Filter, Github, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+﻿import { AlertCircle, CheckCircle2, Copy, Filter, Github, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { PrInputForm } from "../features/analysis/PrInputForm";
-import { AnalysisReport, AnalysisTask, analyzePullRequest } from "../lib/api-client";
+import { AnalysisReport, AnalysisTask, analyzePullRequest, isDemoMode } from "../lib/api-client";
 import { formatFindingComment, formatReviewSummary } from "../lib/review-comments";
 
 type ViewState =
@@ -54,6 +54,8 @@ export function App() {
           </a>
         </header>
 
+        <DemoModeBanner />
+
         <div className="review-layout">
           <section className="review-panel">
             <div className="panel-heading">
@@ -76,6 +78,19 @@ export function App() {
         <ReportView viewState={viewState} />
       </section>
     </main>
+  );
+}
+
+function DemoModeBanner() {
+  if (!isDemoMode()) {
+    return null;
+  }
+
+  return (
+    <div className="demo-banner" role="note">
+      <strong>Demo Mode：</strong>
+      当前在线版本使用浏览器内置示例数据，不会请求 GitHub API、后端服务或 AI 模型。真实 PR 分析链路请查看 README，或在本地启动完整模式。
+    </div>
   );
 }
 
@@ -180,9 +195,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
       <section className="report-empty">
         <ShieldAlert aria-hidden="true" />
         <h2>暂无报告</h2>
-        <p>
-          在线 Demo 使用 mock 数据，不会调用 GitHub、API 服务或 AI 模型。本地运行可分析真实 GitHub PR。
-        </p>
+        <p>选择使用 Demo PR，或输入任意 GitHub PR URL 查看示例报告。</p>
       </section>
     );
   }
