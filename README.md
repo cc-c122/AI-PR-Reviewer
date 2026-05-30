@@ -23,6 +23,8 @@ GitHub Pages Demo 是静态演示模式：
 
 打开 [https://cc-c122.github.io/AI-PR-Reviewer/](https://cc-c122.github.io/AI-PR-Reviewer/)，输入任意形如 `https://github.com/org/repo/pull/123` 的 PR URL，即可看到静态 mock 报告。
 
+示例 PR：[demo: intentionally flawed review example](https://github.com/cc-c122/AI-PR-Reviewer/pull/1)。这个 PR 会长期保持 open，里面包含少量故意设计的 Review 问题，适合在本地完整模式中作为真实 GitHub PR 输入样本。
+
 ### 本地完整模式
 
 ```bash
