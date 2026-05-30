@@ -12,6 +12,16 @@ describe("review comment formatting", () => {
     expect(formatFindingComment(createFinding())).toContain("请检查边界条件。");
   });
 
+  it("marks comments without a line as file-level suggestions", () => {
+    const comment = formatFindingComment({
+      ...createFinding(),
+      line: undefined
+    });
+
+    expect(comment).toContain("**位置:** `src/widget.ts`（文件级建议）");
+    expect(comment).not.toContain("src/widget.ts:undefined");
+  });
+
   it("formats a full review summary with findings", () => {
     const report: AnalysisReport = {
       summary: "这个 PR 调整了 widget 行为。",
@@ -49,7 +59,7 @@ describe("review comment formatting", () => {
     expect(summary).toContain("AI PR 评审摘要：acme/widgets#7");
     expect(summary).toContain("https://github.com/acme/widgets/pull/7");
     expect(summary).toContain("阻塞问题:** 1");
-    expect(summary).toContain("[主要/缺陷/阻塞] src/widget.ts: 检查空值处理");
+    expect(summary).toContain("[主要/缺陷/阻塞] src/widget.ts:42: 检查空值处理");
   });
 });
 

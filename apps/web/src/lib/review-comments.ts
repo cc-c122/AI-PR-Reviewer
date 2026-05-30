@@ -25,13 +25,15 @@ const riskLevelLabels = {
 } as const;
 
 export function formatFindingComment(finding: ReviewFinding): string {
-  const location = finding.line ? `${finding.filePath}:${finding.line}` : finding.filePath;
+  const hasPreciseLine = finding.line !== undefined;
+  const location = hasPreciseLine ? `${finding.filePath}:${finding.line}` : finding.filePath;
+  const locationLabel = hasPreciseLine ? `\`${location}\`` : `\`${location}\`（文件级建议）`;
 
   return [
     `### ${finding.title}`,
     "",
     `- **严重程度 / 类型:** ${severityLabels[finding.severity]} / ${categoryLabels[finding.category]}`,
-    `- **位置:** \`${location}\``,
+    `- **位置:** ${locationLabel}`,
     `- **置信度:** ${Math.round(finding.confidence * 100)}%`,
     `- **是否阻塞:** ${finding.blocking ? "是" : "否"}`,
     "",
@@ -50,8 +52,11 @@ export function formatReviewSummary(report: AnalysisReport, task: AnalysisTask):
   const blockingFindings = report.findings.filter((finding) => finding.blocking);
   const findingLines = report.findings.map((finding, index) => {
     const blocking = finding.blocking ? "阻塞" : "非阻塞";
+    const location = finding.line !== undefined
+      ? `${finding.filePath}:${finding.line}`
+      : `${finding.filePath}（文件级建议）`;
 
-    return `${index + 1}. [${severityLabels[finding.severity]}/${categoryLabels[finding.category]}/${blocking}] ${finding.filePath}: ${finding.title}`;
+    return `${index + 1}. [${severityLabels[finding.severity]}/${categoryLabels[finding.category]}/${blocking}] ${location}: ${finding.title}`;
   });
 
   return [

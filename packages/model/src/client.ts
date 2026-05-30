@@ -12,6 +12,9 @@ export type ReviewModelInput = AnalysisModelInput;
 
 export type ReviewModelClient = AnalysisModelClient;
 
+const preciseBugLineRuleIds = ["hardcoded-secret", "eval-usage", "dangerous-html"] as const;
+const preciseMaintainabilityLineRuleIds = ["console-log", "todo-fixme"] as const;
+
 export class MockReviewModelClient implements ReviewModelClient {
   async generateReview(input: ReviewModelInput): Promise<AnalysisReport> {
     const findings = [
@@ -37,22 +40,28 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
     ? describeContextAvailability(contextFile)
     : "评审上下文中没有变更文件。";
   const staticSignalEvidence = describeStaticSignals(input, file?.path);
-  const line = findSuggestedLine(input, file?.path);
+  const preciseSignal = findPreciseSignal(input, file?.path, preciseBugLineRuleIds);
+  const line = preciseSignal?.line;
   const hasContextOnlySignal = hasContextOnlySignals(input, file?.path);
   const hasOnlyContextOnlySignal = hasOnlyContextOnlySignals(input, file?.path);
+  const isPreciseCodeFinding = preciseSignal !== undefined;
 
   return reviewFindingSchema.parse({
     id: `${input.snapshot.taskId}:bug:${toFindingId(file?.path ?? "pull-request")}`,
     taskId: input.snapshot.taskId,
     severity: input.riskAssessment.riskLevel === "high" ? "major" : "minor",
-    category: "bug",
+    category: isPreciseCodeFinding ? "security" : "bug",
     filePath: file?.path ?? "pull-request",
     ...(line !== undefined ? { line } : {}),
-    title: "检查变更逻辑的边界场景",
+    title: isPreciseCodeFinding ? "检查新增代码中的安全风险模式" : "检查变更逻辑的边界场景",
     evidence: file
-      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}${hasContextOnlySignal ? "其中“仅上下文发现”的信号只表示相关上下文存在风险模式，需要人工确认是否由本 PR 引入。" : ""}`
+      ? isPreciseCodeFinding
+        ? `静态分析信号 ${preciseSignal.ruleId} 指向新增行 ${preciseSignal.line}：${preciseSignal.evidence}。${evidenceDetail}`
+        : `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}${hasContextOnlySignal ? "其中“仅上下文发现”的信号只表示相关上下文存在风险模式，需要人工确认是否由本 PR 引入。" : ""}`
       : "PR 快照中没有变更文件。",
-    suggestion: "请人工确认变更逻辑周围的边界条件、空值处理和失败路径。",
+    suggestion: isPreciseCodeFinding
+      ? "合并前请确认该风险是否为真实敏感信息或不安全执行路径，并改用安全配置或受控 API。"
+      : "请人工确认变更逻辑周围的边界条件、空值处理和失败路径。",
     confidence: hasOnlyContextOnlySignal ? 0.48 : file ? 0.58 : 0.35,
     blocking: input.riskAssessment.riskLevel === "high" && !hasOnlyContextOnlySignal,
     status: "open"
@@ -67,7 +76,6 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
     (signal) => signal.ruleId === "missing-test-change" && signal.filePath === filePath,
   );
   const hasTestChanges = input.riskAssessment.testFileCount > 0;
-  const line = findSuggestedLine(input, filePath);
 
   return reviewFindingSchema.parse({
     id: `${input.snapshot.taskId}:test:${toFindingId(filePath)}`,
@@ -75,7 +83,6 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
     severity: hasTestChanges ? "info" : "major",
     category: "test",
     filePath,
-    ...(line !== undefined ? { line } : {}),
     title: hasTestChanges ? "确认测试覆盖与行为变更匹配" : "为变更行为新增或更新测试",
     evidence: hasTestChanges
       ? `本次 PR 变更了 ${input.riskAssessment.testFileCount} 个测试文件。`
@@ -95,8 +102,10 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
 
 function createMaintainabilityFinding(input: ReviewModelInput): ReviewFinding {
   const file = findLargestFile(input.snapshot.changedFiles);
-  const line = findSuggestedLine(input, file?.path);
+  const preciseSignal = findPreciseSignal(input, file?.path, preciseMaintainabilityLineRuleIds);
+  const line = preciseSignal?.line;
   const staticSignalEvidence = describeStaticSignals(input, file?.path);
+  const isPreciseCodeFinding = preciseSignal !== undefined;
 
   return reviewFindingSchema.parse({
     id: `${input.snapshot.taskId}:maintainability:${toFindingId(file?.path ?? "pull-request")}`,
@@ -105,11 +114,15 @@ function createMaintainabilityFinding(input: ReviewModelInput): ReviewFinding {
     category: "maintainability",
     filePath: file?.path ?? "pull-request",
     ...(line !== undefined ? { line } : {}),
-    title: "优先关注最大变更区域",
+    title: isPreciseCodeFinding ? "处理新增代码中的可维护性信号" : "优先关注最大变更区域",
     evidence: file
-      ? `${file.path} 是本次改动最大的文件，共 ${file.changes} 行变更。${staticSignalEvidence}`
+      ? isPreciseCodeFinding
+        ? `静态分析信号 ${preciseSignal.ruleId} 指向新增行 ${preciseSignal.line}：${preciseSignal.evidence}。`
+        : `${file.path} 是本次改动最大的文件，共 ${file.changes} 行变更。${staticSignalEvidence}`
       : "快照中没有可用于排序的变更文件。",
-    suggestion: "如果该文件混合了无关职责，建议将后续工作拆分到清晰边界中。",
+    suggestion: isPreciseCodeFinding
+      ? "合并前请移除临时调试输出或补充说明，避免把调试痕迹带入主分支。"
+      : "如果该文件混合了无关职责，建议将后续工作拆分到清晰边界中。",
     confidence: file ? 0.64 : 0.35,
     blocking: false,
     status: "open"
@@ -196,24 +209,22 @@ function hasOnlyContextOnlySignals(input: ReviewModelInput, filePath: string | u
   return signals.length > 0 && signals.every((signal) => signal.source === "context_only");
 }
 
-function findSuggestedLine(input: ReviewModelInput, filePath: string | undefined): number | undefined {
+function findPreciseSignal(
+  input: ReviewModelInput,
+  filePath: string | undefined,
+  ruleIds: readonly string[],
+): ReviewModelInput["staticAnalysis"]["signals"][number] | undefined {
   if (!filePath) {
     return undefined;
   }
 
-  const signalLine = input.staticAnalysis.signals.find(
-    (signal) => signal.filePath === filePath && signal.source === "introduced_by_pr" && signal.line,
-  )?.line;
-
-  if (signalLine !== undefined) {
-    return signalLine;
-  }
-
-  return input.reviewContext.changedFiles
-    .find((file) => file.path === filePath)
-    ?.changedLines
-    ?.find((line) => line.type === "added")
-    ?.line;
+  return input.staticAnalysis.signals.find(
+    (signal) =>
+      signal.filePath === filePath &&
+      signal.source === "introduced_by_pr" &&
+      signal.line !== undefined &&
+      ruleIds.includes(signal.ruleId),
+  );
 }
 
 function toFindingId(value: string): string {

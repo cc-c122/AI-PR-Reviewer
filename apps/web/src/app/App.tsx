@@ -364,6 +364,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
               const matchingSignals = signalsByFilePath.get(finding.filePath) ?? [];
               const commentMarkdown = formatFindingComment(finding);
               const copyLabel = `finding:${finding.id}`;
+              const hasPreciseLine = finding.line !== undefined;
 
               return (
                 <article className="finding-card" key={finding.id}>
@@ -373,6 +374,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                         <span className={`severity severity-${finding.severity}`}>{findingSeverityLabels[finding.severity]}</span>
                         <span>{findingCategoryLabels[finding.category]}</span>
                         {finding.blocking ? <span className="blocking-tag">阻塞</span> : null}
+                        {!hasPreciseLine ? <span className="file-level-tag">文件级建议</span> : null}
                       </div>
                       <h3>{finding.title}</h3>
                     </div>
@@ -390,15 +392,15 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                   </header>
                   {copiedAction === copyLabel ? <p className="copy-status">已复制评论 Markdown。</p> : null}
                   <p className="file-path">
-                    {prFilesUrl ? (
+                    {hasPreciseLine && prFilesUrl ? (
                       <a href={prFilesUrl} target="_blank" rel="noreferrer">
-                        {finding.filePath}
-                        {finding.line ? `:${finding.line}` : ""}
+                        {finding.filePath}:{finding.line}
                       </a>
                     ) : (
                       <>
                         {finding.filePath}
-                        {finding.line ? `:${finding.line}` : ""}
+                        {hasPreciseLine ? `:${finding.line}` : ""}
+                        {!hasPreciseLine ? <span className="file-level-tag">文件级建议</span> : null}
                       </>
                     )}
                   </p>
