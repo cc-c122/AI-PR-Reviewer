@@ -1,4 +1,4 @@
-﻿import { AlertCircle, CheckCircle2, Copy, Filter, Github, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Filter, Github, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { PrInputForm } from "../features/analysis/PrInputForm";
 import { AnalysisReport, AnalysisTask, analyzePullRequest, isDemoMode } from "../lib/api-client";
