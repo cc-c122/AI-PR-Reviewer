@@ -31,7 +31,7 @@ export function adaptGitHubPullRequest(
   changedFiles: ChangedFile[],
 ): PullRequestSnapshot {
   return {
-    id: String(pullRequest.id),
+    id: `${taskId}:snapshot`,
     taskId,
     repositoryOwner: reference.owner,
     repositoryName: reference.repo,

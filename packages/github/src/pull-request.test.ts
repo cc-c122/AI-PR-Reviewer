@@ -62,7 +62,7 @@ describe("GitHub pull request adapters", () => {
         changedFiles,
       ),
     ).toEqual({
-      id: "42",
+      id: "task_123:snapshot",
       taskId: "task_123",
       repositoryOwner: "acme",
       repositoryName: "widgets",
