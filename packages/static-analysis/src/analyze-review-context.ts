@@ -1,4 +1,4 @@
-﻿import {
+import {
   PullRequestReviewContext,
   ReviewContextFile,
   StaticAnalysisResult,
