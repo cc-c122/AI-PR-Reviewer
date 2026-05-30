@@ -6,15 +6,15 @@ export function formatFindingComment(finding: ReviewFinding): string {
   return [
     `### ${finding.title}`,
     "",
-    `- **Severity / Category:** ${finding.severity} / ${finding.category}`,
-    `- **Location:** \`${location}\``,
-    `- **Confidence:** ${Math.round(finding.confidence * 100)}%`,
-    `- **Blocking:** ${finding.blocking ? "yes" : "no"}`,
+    `- **严重级别 / 类型:** ${finding.severity} / ${finding.category}`,
+    `- **位置:** \`${location}\``,
+    `- **置信度:** ${Math.round(finding.confidence * 100)}%`,
+    `- **是否阻塞:** ${finding.blocking ? "是" : "否"}`,
     "",
-    "**Evidence**",
+    "**证据**",
     finding.evidence,
     "",
-    "**Suggestion**",
+    "**建议**",
     finding.suggestion
   ].join("\n");
 }
@@ -25,26 +25,26 @@ export function formatReviewSummary(report: AnalysisReport, task: AnalysisTask):
   const pullRequestLink = snapshot?.url ? ` (${snapshot.url})` : "";
   const blockingFindings = report.findings.filter((finding) => finding.blocking);
   const findingLines = report.findings.map((finding, index) => {
-    const blocking = finding.blocking ? "blocking" : "non-blocking";
+    const blocking = finding.blocking ? "阻塞" : "非阻塞";
 
     return `${index + 1}. [${finding.severity}/${finding.category}/${blocking}] ${finding.filePath}: ${finding.title}`;
   });
 
   return [
-    `## AI PR Review Summary for ${pullRequestLabel}${pullRequestLink}`,
+    `## AI PR Review 摘要：${pullRequestLabel}${pullRequestLink}`,
     "",
-    `**Risk level:** ${report.riskLevel}`,
-    `**Findings:** ${report.findings.length}`,
-    `**Blocking findings:** ${blockingFindings.length}`,
+    `**风险级别:** ${report.riskLevel}`,
+    `**问题数量:** ${report.findings.length}`,
+    `**阻塞问题:** ${blockingFindings.length}`,
     "",
     report.summary,
     "",
-    "### Findings",
-    findingLines.length > 0 ? findingLines.join("\n") : "No findings were returned.",
+    "### 问题列表",
+    findingLines.length > 0 ? findingLines.join("\n") : "未返回 Review 问题。",
     "",
-    "### Review comments",
+    "### Review 评论",
     report.findings.length > 0
       ? report.findings.map((finding) => formatFindingComment(finding)).join("\n\n---\n\n")
-      : "No review comments to copy."
+      : "没有可复制的 Review 评论。"
   ].join("\n");
 }

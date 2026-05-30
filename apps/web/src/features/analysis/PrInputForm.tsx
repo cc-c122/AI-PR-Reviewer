@@ -37,10 +37,10 @@ export function PrInputForm({ disabled = false, onSubmit }: PrInputFormProps) {
         />
         <button type="submit" disabled={disabled}>
           <Search aria-hidden="true" />
-          <span>{disabled ? "Analyzing" : "Analyze"}</span>
+          <span>{disabled ? "分析中" : "开始分析"}</span>
         </button>
         <button className="demo-button" type="button" disabled={disabled} onClick={handleUseDemoPullRequest}>
-          Use demo PR
+          使用 Demo PR
         </button>
       </div>
     </form>

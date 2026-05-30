@@ -32,6 +32,10 @@ describe("MockReviewModelClient", () => {
 
     expect(() => modelReviewOutputSchema.parse(report)).not.toThrow();
     expect(report.riskLevel).toBe("medium");
+    expect(report.summary).toContain("Mock Review");
+    expect(report.findings[0]?.title).toContain("边界场景");
+    expect(report.findings[0]?.evidence).toContain("变更 30 行");
+    expect(report.findings[0]?.suggestion).toContain("空值处理");
     expect(new Set(report.findings.map((finding) => finding.category))).toEqual(
       new Set(["bug", "test", "maintainability"]),
     );

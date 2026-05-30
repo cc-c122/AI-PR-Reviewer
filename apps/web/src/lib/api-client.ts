@@ -135,7 +135,7 @@ export async function getAnalysisReport(taskId: string): Promise<AnalysisReport>
     const demo = getDemoAnalysis(taskId);
 
     if (!demo) {
-      throw new Error("Demo analysis task was not found.");
+      throw new Error("未找到 Demo 分析任务。");
     }
 
     return demo.report;
@@ -175,8 +175,8 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
     repositoryName: reference.repo,
     pullRequestNumber: reference.pullRequestNumber,
     url: pullRequestUrl,
-    title: "Demo analysis for AI PR Reviewer",
-    description: "Static GitHub Pages demo mode uses deterministic sample findings without a backend.",
+    title: "AI PR Reviewer 演示分析",
+    description: "静态 GitHub Pages Demo 模式使用固定示例结果，不依赖后端服务。",
     author: "demo-user",
     baseRef: "main",
     baseSha: "a1b2c3d4e5f6",
@@ -201,7 +201,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
     ]
   };
   const report: AnalysisReport = {
-    summary: `${reference.owner}/${reference.repo}#${reference.pullRequestNumber}: demo report. This static GitHub Pages build shows the review workflow without calling GitHub, the API server, or an AI provider.`,
+    summary: `${reference.owner}/${reference.repo}#${reference.pullRequestNumber}: 这是 Demo 报告。当前静态 GitHub Pages 构建会展示 Review 工作流，但不会调用 GitHub、API 服务或 AI 模型。`,
     riskLevel: "medium",
     findings: [
       {
@@ -210,9 +210,9 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         severity: "major",
         category: "bug",
         filePath: "src/services/review-engine.ts",
-        title: "Validate review-engine edge cases",
-        evidence: "The demo changed file has 110 total line changes in review-engine logic.",
-        suggestion: "Check null inputs, empty diffs, and model timeout paths before merging.",
+        title: "检查 review-engine 的边界场景",
+        evidence: "Demo 变更文件在 review-engine 逻辑中共有 110 行改动。",
+        suggestion: "合并前请确认空输入、空 diff 和模型超时路径都已被覆盖。",
         confidence: 0.74,
         blocking: true,
         status: "open"
@@ -223,9 +223,9 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         severity: "info",
         category: "test",
         filePath: "src/services/review-engine.test.ts",
-        title: "Confirm tests cover both success and failure paths",
-        evidence: "A related test file is present in the demo snapshot.",
-        suggestion: "Make sure tests cover schema validation failures and empty PR snapshots.",
+        title: "确认测试覆盖成功和失败路径",
+        evidence: "Demo 快照中包含相关测试文件。",
+        suggestion: "请确认测试覆盖 schema 校验失败和空 PR 快照等场景。",
         confidence: 0.67,
         blocking: false,
         status: "open"
@@ -236,9 +236,9 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         severity: "minor",
         category: "maintainability",
         filePath: "src/services/review-engine.ts",
-        title: "Keep analysis orchestration easy to split",
-        evidence: "The largest demo change is concentrated in one review-engine file.",
-        suggestion: "Separate fetching, risk scoring, and model validation when the implementation grows.",
+        title: "保持分析编排逻辑便于拆分",
+        evidence: "Demo 中最大的改动集中在一个 review-engine 文件内。",
+        suggestion: "当实现继续增长时，建议将数据获取、风险评分和模型校验拆分到清晰边界中。",
         confidence: 0.62,
         blocking: false,
         status: "open"
@@ -253,22 +253,22 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
               {
                 type: "metadata",
                 filePath: "src/services/review-engine.ts",
-                description: "Changed file metadata from the pull request file list."
+                description: "来自 Pull Request 文件列表的变更文件元数据。"
               },
               {
                 type: "patch",
                 filePath: "src/services/review-engine.ts",
-                description: "Changed file patch from GitHub pull request files."
+                description: "来自 GitHub Pull Request 文件接口的变更 patch。"
               },
               {
                 type: "file_content",
                 filePath: "src/services/review-engine.ts",
-                description: "Repository file content at PR head commit, truncated by size limit."
+                description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
               },
               {
                 type: "test_candidate",
                 filePath: "src/services/review-engine.ts",
-                description: "Potential related test/spec paths inferred from the changed file path."
+                description: "根据变更文件路径推断出的潜在相关测试路径。"
               }
             ],
             contentAvailable: true,
@@ -286,12 +286,12 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
               {
                 type: "metadata",
                 filePath: "src/services/review-engine.test.ts",
-                description: "Changed file metadata from the pull request file list."
+                description: "来自 Pull Request 文件列表的变更文件元数据。"
               },
               {
                 type: "test_candidate",
                 filePath: "src/services/review-engine.test.ts",
-                description: "Changed file is itself a test/spec file."
+                description: "变更文件本身就是测试或 spec 文件。"
               }
             ],
             contentAvailable: false,
@@ -303,37 +303,37 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
         contextSources: [
           {
             type: "metadata",
-            description: "Pull request metadata from GitHub."
+            description: "来自 GitHub 的 Pull Request 元数据。"
           },
           {
             type: "metadata",
             filePath: "src/services/review-engine.ts",
-            description: "Changed file metadata from the pull request file list."
+            description: "来自 Pull Request 文件列表的变更文件元数据。"
           },
           {
             type: "patch",
             filePath: "src/services/review-engine.ts",
-            description: "Changed file patch from GitHub pull request files."
+            description: "来自 GitHub Pull Request 文件接口的变更 patch。"
           },
           {
             type: "file_content",
             filePath: "src/services/review-engine.ts",
-            description: "Repository file content at PR head commit, truncated by size limit."
+            description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
           },
           {
             type: "test_candidate",
             filePath: "src/services/review-engine.ts",
-            description: "Potential related test/spec paths inferred from the changed file path."
+            description: "根据变更文件路径推断出的潜在相关测试路径。"
           },
           {
             type: "metadata",
             filePath: "src/services/review-engine.test.ts",
-            description: "Changed file metadata from the pull request file list."
+            description: "来自 Pull Request 文件列表的变更文件元数据。"
           },
           {
             type: "test_candidate",
             filePath: "src/services/review-engine.test.ts",
-            description: "Changed file is itself a test/spec file."
+            description: "变更文件本身就是测试或 spec 文件。"
           }
         ]
       },
@@ -345,8 +345,8 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
             ruleId: "large-change",
             category: "size",
             severity: "medium",
-            message: "Large service-level change detected in review orchestration.",
-            evidence: "src/services/review-engine.ts changed 110 line(s).",
+            message: "检测到 review 编排中的服务级大改动。",
+            evidence: "src/services/review-engine.ts 变更 110 行。",
             confidence: 0.72
           },
           {
@@ -355,7 +355,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
             ruleId: "console-log",
             category: "maintainability",
             severity: "low",
-            message: "Debug logging pattern detected in changed context.",
+            message: "在变更上下文中检测到调试日志模式。",
             evidence: "console.log(\"analysis started\")",
             confidence: 0.62
           },
@@ -365,8 +365,8 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
             ruleId: "test-context-present",
             category: "test",
             severity: "low",
-            message: "Related test file is part of this PR.",
-            evidence: "src/services/review-engine.test.ts changed 20 line(s).",
+            message: "相关测试文件已包含在本次 PR 中。",
+            evidence: "src/services/review-engine.test.ts 变更 20 行。",
             confidence: 0.7
           }
         ],
@@ -381,9 +381,9 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
           }
         ],
         riskHints: [
-          "MEDIUM large-change in src/services/review-engine.ts: Large service-level change detected in review orchestration.",
-          "LOW console-log in src/services/review-engine.ts: Debug logging pattern detected in changed context.",
-          "Skipped 2 generated/lock/build file(s) to reduce noise."
+          "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
+          "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
+          "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
         ]
       },
       generatedAt: now
@@ -412,13 +412,13 @@ function parseDemoPullRequestUrl(value: string) {
   const [owner, repo, resource, pullRequestNumber] = url.pathname.split("/").filter(Boolean);
 
   if (url.protocol !== "https:" || url.hostname !== "github.com" || resource !== "pull" || !owner || !repo) {
-    throw new Error("Demo mode accepts GitHub PR URLs like https://github.com/org/repo/pull/123.");
+    throw new Error("Demo 模式接受类似 https://github.com/org/repo/pull/123 的 GitHub PR URL。");
   }
 
   const parsedPullRequestNumber = Number(pullRequestNumber);
 
   if (!Number.isInteger(parsedPullRequestNumber) || parsedPullRequestNumber <= 0) {
-    throw new Error("Demo mode requires a numeric pull request number.");
+    throw new Error("Demo 模式要求 PR 编号必须是数字。");
   }
 
   return {

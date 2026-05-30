@@ -4,15 +4,17 @@ import { formatFindingComment, formatReviewSummary } from "./review-comments";
 
 describe("review comment formatting", () => {
   it("formats a finding as a GitHub review comment draft", () => {
-    expect(formatFindingComment(createFinding())).toContain("### Validate null handling");
-    expect(formatFindingComment(createFinding())).toContain("**Severity / Category:** major / bug");
-    expect(formatFindingComment(createFinding())).toContain("**Blocking:** yes");
-    expect(formatFindingComment(createFinding())).toContain("Check boundary conditions.");
+    expect(formatFindingComment(createFinding())).toContain("### 检查空值处理");
+    expect(formatFindingComment(createFinding())).toContain("**严重级别 / 类型:** major / bug");
+    expect(formatFindingComment(createFinding())).toContain("**位置:** `src/widget.ts:42`");
+    expect(formatFindingComment(createFinding())).toContain("**置信度:** 82%");
+    expect(formatFindingComment(createFinding())).toContain("**是否阻塞:** 是");
+    expect(formatFindingComment(createFinding())).toContain("请检查边界条件。");
   });
 
   it("formats a full review summary with findings", () => {
     const report: AnalysisReport = {
-      summary: "This PR touches widget behavior.",
+      summary: "这个 PR 调整了 widget 行为。",
       riskLevel: "medium",
       findings: [createFinding()]
     };
@@ -44,10 +46,10 @@ describe("review comment formatting", () => {
 
     const summary = formatReviewSummary(report, task);
 
-    expect(summary).toContain("AI PR Review Summary for acme/widgets#7");
+    expect(summary).toContain("AI PR Review 摘要：acme/widgets#7");
     expect(summary).toContain("https://github.com/acme/widgets/pull/7");
-    expect(summary).toContain("Blocking findings:** 1");
-    expect(summary).toContain("[major/bug/blocking] src/widget.ts: Validate null handling");
+    expect(summary).toContain("阻塞问题:** 1");
+    expect(summary).toContain("[major/bug/阻塞] src/widget.ts: 检查空值处理");
   });
 });
 
@@ -59,9 +61,9 @@ function createFinding(): ReviewFinding {
     category: "bug",
     filePath: "src/widget.ts",
     line: 42,
-    title: "Validate null handling",
-    evidence: "The changed path reads profile.id without checking profile.",
-    suggestion: "Check boundary conditions.",
+    title: "检查空值处理",
+    evidence: "变更路径读取 profile.id 前没有检查 profile。",
+    suggestion: "请检查边界条件。",
     confidence: 0.82,
     blocking: true,
     status: "open"

@@ -35,7 +35,7 @@ export function App() {
     } catch (error) {
       setViewState({
         status: "error",
-        message: error instanceof Error ? error.message : "Unable to analyze this pull request."
+        message: error instanceof Error ? error.message : "无法分析这个 Pull Request。"
       });
     }
   }
@@ -57,19 +57,18 @@ export function App() {
         <div className="review-layout">
           <section className="review-panel">
             <div className="panel-heading">
-              <p className="eyebrow">Review workflow</p>
-              <h1>Analyze a GitHub pull request</h1>
+              <p className="eyebrow">Review 工作流</p>
+              <h1>分析 GitHub Pull Request</h1>
               <p>
-                Paste a public PR URL to create an analysis task, fetch the generated report, and review the
-                structured findings before deciding what needs human attention.
+                粘贴公开 PR URL 后创建分析任务，获取生成报告，并在人工判断前先查看结构化 Review 结果。
               </p>
             </div>
             <PrInputForm disabled={viewState.status === "loading"} onSubmit={handleAnalyze} />
             <StatusMessage viewState={viewState} />
           </section>
 
-          <aside className="status-panel" aria-label="Analysis state">
-            <h2>Current run</h2>
+          <aside className="status-panel" aria-label="分析状态">
+            <h2>当前任务</h2>
             <RunSummary viewState={viewState} />
           </aside>
         </div>
@@ -85,7 +84,7 @@ function StatusMessage({ viewState }: { viewState: ViewState }) {
     return (
       <p className="form-status is-loading">
         <Loader2 aria-hidden="true" />
-        Creating analysis task and loading the report for {viewState.pullRequestUrl}
+        正在创建分析任务并加载报告：{viewState.pullRequestUrl}
       </p>
     );
   }
@@ -103,12 +102,12 @@ function StatusMessage({ viewState }: { viewState: ViewState }) {
     return (
       <p className="form-status is-success">
         <CheckCircle2 aria-hidden="true" />
-        Report loaded for task {viewState.task.taskId}
+        已加载任务 {viewState.task.taskId} 的报告
       </p>
     );
   }
 
-  return <p className="form-status">No analysis has been run yet.</p>;
+  return <p className="form-status">还没有运行分析。</p>;
 }
 
 function RunSummary({ viewState }: { viewState: ViewState }) {
@@ -119,38 +118,38 @@ function RunSummary({ viewState }: { viewState: ViewState }) {
     return (
       <dl className="run-summary">
         <div>
-          <dt>Status</dt>
+          <dt>状态</dt>
           <dd>{viewState.task.status}</dd>
         </div>
         <div>
-          <dt>Risk</dt>
+          <dt>风险</dt>
           <dd className={`risk-value risk-${viewState.report.riskLevel}`}>{viewState.report.riskLevel}</dd>
         </div>
         <div>
-          <dt>Findings</dt>
+          <dt>问题</dt>
           <dd>{viewState.report.findings.length}</dd>
         </div>
         <div>
-          <dt>Blocking</dt>
+          <dt>阻塞</dt>
           <dd>{blockingCount}</dd>
         </div>
         <div>
-          <dt>Changed files</dt>
-          <dd>{snapshot?.changedFiles.length ?? "Unknown"}</dd>
+          <dt>变更文件</dt>
+          <dd>{snapshot?.changedFiles.length ?? "未知"}</dd>
         </div>
       </dl>
     );
   }
 
   if (viewState.status === "loading") {
-    return <p className="muted">Waiting for the API to create the task and return the report.</p>;
+    return <p className="muted">等待 API 创建任务并返回报告。</p>;
   }
 
   if (viewState.status === "error") {
-    return <p className="muted">Fix the URL or API issue, then run the analysis again.</p>;
+    return <p className="muted">修正 URL 或 API 问题后再重新分析。</p>;
   }
 
-  return <p className="muted">Enter a public GitHub PR URL to start the MVP review loop.</p>;
+  return <p className="muted">输入公开 GitHub PR URL，开始 MVP Review 流程。</p>;
 }
 
 function ReportView({ viewState }: { viewState: ViewState }) {
@@ -160,8 +159,8 @@ function ReportView({ viewState }: { viewState: ViewState }) {
     return (
       <section className="report-empty loading-state">
         <Loader2 aria-hidden="true" />
-        <h2>Loading report</h2>
-        <p>The API is fetching PR data and generating a deterministic MVP review report.</p>
+        <h2>正在加载报告</h2>
+        <p>API 正在获取 PR 数据并生成确定性的 MVP Review 报告。</p>
       </section>
     );
   }
@@ -170,7 +169,7 @@ function ReportView({ viewState }: { viewState: ViewState }) {
     return (
       <section className="report-empty error-state">
         <AlertCircle aria-hidden="true" />
-        <h2>Analysis failed</h2>
+        <h2>分析失败</h2>
         <p>{viewState.message}</p>
       </section>
     );
@@ -180,10 +179,9 @@ function ReportView({ viewState }: { viewState: ViewState }) {
     return (
       <section className="report-empty">
         <ShieldAlert aria-hidden="true" />
-        <h2>No report yet</h2>
+        <h2>暂无报告</h2>
         <p>
-          The online Demo uses mock data and does not call GitHub, the API server, or an AI model. Run locally for real
-          GitHub PR analysis.
+          在线 Demo 使用 mock 数据，不会调用 GitHub、API 服务或 AI 模型。本地运行可分析真实 GitHub PR。
         </p>
       </section>
     );
@@ -208,30 +206,30 @@ function ReportView({ viewState }: { viewState: ViewState }) {
     <section className="report-grid" aria-label="Analysis report">
       <article className="report-section pr-overview">
         <div>
-          <p className="eyebrow">Pull request</p>
+          <p className="eyebrow">Pull Request</p>
           <h2>{snapshot?.title ?? `${task.repositoryOwner}/${task.repositoryName}#${task.pullRequestNumber}`}</h2>
           <p className="muted">
             {task.repositoryOwner}/{task.repositoryName} #{task.pullRequestNumber}
           </p>
           {snapshot?.url ? (
             <a className="pr-link" href={snapshot.url} target="_blank" rel="noreferrer">
-              Open PR
+              打开 PR
             </a>
           ) : null}
         </div>
         <dl className="metadata-grid">
-          <Metadata label="Author" value={snapshot?.author ?? "Unknown"} />
-          <Metadata label="Base" value={snapshot?.baseRef ?? "Unknown"} />
-          <Metadata label="Head" value={snapshot?.headRef ?? "Unknown"} />
-          <Metadata label="Commit" value={snapshot?.commitSha.slice(0, 8) ?? "Unknown"} />
+          <Metadata label="作者" value={snapshot?.author ?? "未知"} />
+          <Metadata label="Base" value={snapshot?.baseRef ?? "未知"} />
+          <Metadata label="Head" value={snapshot?.headRef ?? "未知"} />
+          <Metadata label="Commit" value={snapshot?.commitSha.slice(0, 8) ?? "未知"} />
         </dl>
       </article>
 
       <article className="report-section summary-section">
         <div className="section-title">
           <div>
-            <p className="eyebrow">Summary</p>
-            <h2>Review brief</h2>
+            <p className="eyebrow">摘要</p>
+            <h2>Review 简报</h2>
           </div>
           <div className="section-actions">
             <button
@@ -240,20 +238,20 @@ function ReportView({ viewState }: { viewState: ViewState }) {
               onClick={() => copyReviewText("summary", formatReviewSummary(report, task))}
             >
               <Copy aria-hidden="true" />
-              Copy full review summary
+              复制完整 Review 摘要
             </button>
             <span className={`risk-badge risk-${report.riskLevel}`}>{report.riskLevel}</span>
           </div>
         </div>
-        {copiedAction === "summary" ? <p className="copy-status">Copied full review summary.</p> : null}
+        {copiedAction === "summary" ? <p className="copy-status">已复制完整 Review 摘要。</p> : null}
         <p>{report.summary}</p>
       </article>
 
       <article className="report-section findings-section">
         <div className="section-title">
           <div>
-            <p className="eyebrow">Findings</p>
-            <h2>Structured review items</h2>
+            <p className="eyebrow">问题</p>
+            <h2>结构化 Review 项</h2>
           </div>
           <div className="section-actions">
             <button
@@ -268,17 +266,17 @@ function ReportView({ viewState }: { viewState: ViewState }) {
               }
             >
               <Copy aria-hidden="true" />
-              Copy all blocking
+              复制所有阻塞项
             </button>
             <span className="count-badge">{sortedFindings.length}</span>
           </div>
         </div>
-        {copiedAction === "blocking" ? <p className="copy-status">Copied blocking review comments.</p> : null}
+        {copiedAction === "blocking" ? <p className="copy-status">已复制阻塞 Review 评论。</p> : null}
 
         {sortedFindings.length === 0 ? (
           <div className="empty-findings">
             <CheckCircle2 aria-hidden="true" />
-            <p>No findings were returned for this report.</p>
+            <p>这份报告没有返回 Review 问题。</p>
           </div>
         ) : (
           <div className="finding-list">
@@ -306,11 +304,11 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                       onClick={() => copyReviewText(copyLabel, commentMarkdown)}
                     >
                       <Copy aria-hidden="true" />
-                      Copy comment
+                      复制评论
                     </button>
                   </div>
                 </header>
-                {copiedAction === copyLabel ? <p className="copy-status">Copied comment Markdown.</p> : null}
+                {copiedAction === copyLabel ? <p className="copy-status">已复制评论 Markdown。</p> : null}
                 <p className="file-path">
                   {prFilesUrl ? (
                     <a href={prFilesUrl} target="_blank" rel="noreferrer">
@@ -326,17 +324,17 @@ function ReportView({ viewState }: { viewState: ViewState }) {
                 </p>
                 <dl className="finding-detail">
                   <div>
-                    <dt>Evidence</dt>
+                    <dt>证据</dt>
                     <dd>{finding.evidence}</dd>
                   </div>
                   <div>
-                    <dt>Suggestion</dt>
+                    <dt>建议</dt>
                     <dd>{finding.suggestion}</dd>
                   </div>
                 </dl>
                 {matchingSignals.length > 0 ? (
                   <div className="rule-evidence">
-                    <strong>Rule evidence</strong>
+                    <strong>规则证据</strong>
                     <span>
                       {matchingSignals.slice(0, 2).map((signal) => `${signal.ruleId} (${signal.severity})`).join(", ")}
                       {matchingSignals.length > 2 ? ` +${matchingSignals.length - 2}` : ""}
@@ -367,11 +365,11 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
     <article className="report-section evidence-section">
       <div className="section-title">
         <div>
-          <p className="eyebrow">Analysis basis</p>
-          <h2>Analysis evidence</h2>
-          <p className="muted">Context sources, rule signals, and skipped files used to support review judgment.</p>
+          <p className="eyebrow">分析依据</p>
+          <h2>分析证据</h2>
+          <p className="muted">用于支撑 Review 判断的上下文来源、规则信号和已跳过文件。</p>
         </div>
-        <span className="count-badge">{details.reviewContextSummary.files.length} files</span>
+        <span className="count-badge">{details.reviewContextSummary.files.length} 个文件</span>
       </div>
 
       <div className="source-stats" aria-label="Context source statistics">
@@ -385,7 +383,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
 
       {details.staticAnalysis.riskHints.length > 0 ? (
         <section className="evidence-block">
-          <h3>Risk hints</h3>
+          <h3>风险提示</h3>
           <ul className="compact-list">
             {details.staticAnalysis.riskHints.map((hint) => (
               <li key={hint}>{hint}</li>
@@ -396,10 +394,10 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
 
       <section className="evidence-block">
         <div className="evidence-toolbar">
-          <h3>Static analysis signals</h3>
+          <h3>静态分析信号</h3>
           <label>
             <Filter aria-hidden="true" />
-            <span>Severity</span>
+            <span>严重级别</span>
             <select
               value={severityFilter}
               onChange={(event) => setSeverityFilter(event.target.value as SignalSeverityFilter)}
@@ -414,7 +412,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
         </div>
 
         {filteredSignals.length === 0 ? (
-          <p className="muted">No static analysis signals match the current filter.</p>
+          <p className="muted">没有静态分析信号匹配当前筛选条件。</p>
         ) : (
           <div className="signal-list">
             {filteredSignals.map((signal) => (
@@ -429,7 +427,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
                 <p>{signal.message}</p>
                 <dl className="finding-detail">
                   <div>
-                    <dt>Evidence</dt>
+                    <dt>证据</dt>
                     <dd>{signal.evidence}</dd>
                   </div>
                 </dl>
@@ -440,18 +438,18 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
       </section>
 
       <section className="evidence-block">
-        <h3>File context</h3>
+        <h3>文件上下文</h3>
         <div className="context-file-list">
           {details.reviewContextSummary.files.map((file) => (
             <details className="context-file" key={file.path}>
               <summary>
                 <span className="file-path">{file.path}</span>
-                <span>{file.contentAvailable ? "content available" : "metadata only"}</span>
+                <span>{file.contentAvailable ? "内容可用" : "仅元数据"}</span>
               </summary>
               <dl className="context-meta">
-                <Metadata label="Content" value={file.contentAvailable ? "available" : "not fetched"} />
-                <Metadata label="Truncated" value={file.contentTruncated ? "yes" : "no"} />
-                <Metadata label="Test file" value={file.isTestFile ? "yes" : "no"} />
+                <Metadata label="内容" value={file.contentAvailable ? "可用" : "未获取"} />
+                <Metadata label="已截断" value={file.contentTruncated ? "是" : "否"} />
+                <Metadata label="测试文件" value={file.isTestFile ? "是" : "否"} />
               </dl>
               <div className="context-sources">
                 {file.contextSources.map((source) => (
@@ -467,7 +465,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
               </ul>
               {file.testCandidatePaths.length > 0 ? (
                 <div className="test-candidates">
-                  <dt>Test candidates</dt>
+                  <dt>候选测试</dt>
                   <ul className="compact-list mono-list">
                     {file.testCandidatePaths.map((candidate) => (
                       <li key={candidate}>{candidate}</li>
@@ -483,7 +481,7 @@ function AnalysisEvidenceSection({ details }: { details: ReportDetails }) {
       {details.staticAnalysis.skippedFiles.length > 0 ? (
         <section className="evidence-block">
           <details className="skipped-files">
-            <summary>Skipped files ({details.staticAnalysis.skippedFiles.length})</summary>
+            <summary>已跳过文件 ({details.staticAnalysis.skippedFiles.length})</summary>
             <ul className="compact-list mono-list">
               {details.staticAnalysis.skippedFiles.map((file) => (
                 <li key={`${file.filePath}:${file.reason}`}>

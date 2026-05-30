@@ -21,7 +21,7 @@ export class MockReviewModelClient implements ReviewModelClient {
     ].map((finding) => reviewFindingSchema.parse(finding));
 
     return modelReviewOutputSchema.parse({
-      summary: input.summary,
+      summary: `Mock Review：${input.summary}`,
       riskLevel: input.riskAssessment.riskLevel,
       findings
     });
@@ -35,7 +35,7 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
   const file = input.snapshot.changedFiles.find((changedFile) => changedFile.path === contextFile?.path) ?? input.snapshot.changedFiles[0];
   const evidenceDetail = contextFile
     ? describeContextAvailability(contextFile)
-    : "The pull request has no changed files in the review context.";
+    : "Review 上下文中没有变更文件。";
   const staticSignalEvidence = describeStaticSignals(input, file?.path);
 
   return reviewFindingSchema.parse({
@@ -44,11 +44,11 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
     severity: input.riskAssessment.riskLevel === "high" ? "major" : "minor",
     category: "bug",
     filePath: file?.path ?? "pull-request",
-    title: "Review changed logic for edge cases",
+    title: "检查变更逻辑的边界场景",
     evidence: file
-      ? `${file.path} changed ${file.changes} line(s), which may affect runtime behavior. ${evidenceDetail}${staticSignalEvidence}`
-      : "The pull request has no changed files in the snapshot.",
-    suggestion: "Manually verify boundary conditions, null handling, and failure paths around the changed logic.",
+      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}`
+      : "PR 快照中没有变更文件。",
+    suggestion: "请人工确认变更逻辑周围的边界条件、空值处理和失败路径。",
     confidence: file ? 0.58 : 0.35,
     blocking: input.riskAssessment.riskLevel === "high",
     status: "open"
@@ -70,17 +70,17 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
     severity: hasTestChanges ? "info" : "major",
     category: "test",
     filePath,
-    title: hasTestChanges ? "Confirm test coverage matches the behavior change" : "Add or update tests for changed behavior",
+    title: hasTestChanges ? "确认测试覆盖与行为变更匹配" : "为变更行为新增或更新测试",
     evidence: hasTestChanges
-      ? `${input.riskAssessment.testFileCount} test file(s) changed in this PR.`
+      ? `本次 PR 变更了 ${input.riskAssessment.testFileCount} 个测试文件。`
       : missingTestSignal
-        ? `${missingTestSignal.message} ${missingTestSignal.evidence}`
+        ? `静态分析信号 ${missingTestSignal.ruleId}: ${missingTestSignal.evidence}`
       : contextFile && contextFile.testCandidatePaths.length > 0
-        ? `No test file changes were detected. Candidate related tests include ${contextFile.testCandidatePaths.slice(0, 3).join(", ")}.`
-        : "No test file changes were detected alongside source changes.",
+        ? `未检测到测试文件变更。候选相关测试包括 ${contextFile.testCandidatePaths.slice(0, 3).join(", ")}。`
+        : "源代码变更旁未检测到测试文件变更。",
     suggestion: hasTestChanges
-      ? "Check that the updated tests cover both expected behavior and relevant failure paths."
-      : "Add focused tests that exercise the changed behavior before merging.",
+      ? "请确认更新后的测试同时覆盖预期行为和相关失败路径。"
+      : "合并前请补充聚焦测试，覆盖本次变更的行为。",
     confidence: hasTestChanges ? 0.55 : 0.72,
     blocking: !hasTestChanges && input.riskAssessment.riskLevel !== "low",
     status: "open"
@@ -96,11 +96,11 @@ function createMaintainabilityFinding(input: ReviewModelInput): ReviewFinding {
     severity: file && file.changes >= 300 ? "major" : "minor",
     category: "maintainability",
     filePath: file?.path ?? "pull-request",
-    title: "Keep the review focused on the largest change area",
+    title: "优先关注最大变更区域",
     evidence: file
-      ? `${file.path} is the largest changed file with ${file.changes} total line change(s).`
-      : "The snapshot did not include changed files to prioritize.",
-    suggestion: "If this file mixes unrelated concerns, split follow-up work or add comments only where they clarify non-obvious decisions.",
+      ? `${file.path} 是本次改动最大的文件，共 ${file.changes} 行变更。`
+      : "快照中没有可用于排序的变更文件。",
+    suggestion: "如果该文件混合了无关职责，建议拆分后续工作；仅在能解释非显而易见决策时添加注释。",
     confidence: file ? 0.64 : 0.35,
     blocking: false,
     status: "open"
@@ -131,14 +131,14 @@ function describeContextAvailability(file: {
   const sources = [];
 
   if (file.patch) {
-    sources.push("patch is available");
+    sources.push("patch 可用");
   }
 
   if (file.content) {
-    sources.push(file.contentTruncated ? "truncated file content is available" : "full file content is available");
+    sources.push(file.contentTruncated ? "已截断的文件内容可用" : "完整文件内容可用");
   }
 
-  return sources.length > 0 ? `Review context: ${sources.join("; ")}.` : "Review context only includes file metadata.";
+  return sources.length > 0 ? `Review 上下文：${sources.join("；")}。` : "Review 上下文仅包含文件元数据。";
 }
 
 function describeStaticSignals(input: ReviewModelInput, filePath: string | undefined): string {
@@ -152,7 +152,7 @@ function describeStaticSignals(input: ReviewModelInput, filePath: string | undef
     return "";
   }
 
-  return ` Static analysis signals: ${signals.map((signal) => `${signal.ruleId} (${signal.severity}, ${signal.confidence})`).join("; ")}.`;
+  return ` 静态分析信号：${signals.map((signal) => `${signal.ruleId} (${signal.severity}, ${signal.confidence})`).join("；")}。`;
 }
 
 function toFindingId(value: string): string {
