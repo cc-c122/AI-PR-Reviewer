@@ -103,6 +103,43 @@ describe("MockReviewModelClient", () => {
     expect(finding?.line).toBe(41);
     expect(finding?.blocking).toBe(false);
   });
+
+  it("does not create a blocking bug finding when high-risk input only has context-only signals", async () => {
+    const highRiskSnapshot = createSnapshot({
+      changes: 900,
+      additions: 850,
+      patch: "@@ -40,0 +41,1 @@\n+export const value = 1"
+    });
+    const report = await generateMockReport(
+      {
+        signals: [
+          {
+            id: "src/widget.ts:hardcoded-secret",
+            filePath: "src/widget.ts",
+            ruleId: "hardcoded-secret",
+            category: "security",
+            severity: "medium",
+            source: "context_only",
+            needsHumanConfirmation: true,
+            message: "Possible hardcoded secret in related context.",
+            evidence: "仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
+            confidence: 0.45,
+            line: 99
+          }
+        ],
+        skippedFiles: [],
+        riskHints: []
+      },
+      highRiskSnapshot,
+    );
+
+    const bugFinding = report.findings.find((finding) => finding.category === "bug");
+
+    expect(report.riskLevel).toBe("high");
+    expect(bugFinding?.blocking).toBe(false);
+    expect(bugFinding?.line).toBe(41);
+    expect(bugFinding?.evidence).toContain("context_only");
+  });
 });
 
 describe("createReviewModelClientFromEnv", () => {
@@ -196,8 +233,8 @@ describe("OpenAICompatibleReviewModelClient", () => {
   });
 });
 
-async function generateMockReport(staticAnalysis: StaticAnalysisResult) {
-  const input = createModelInput();
+async function generateMockReport(staticAnalysis: StaticAnalysisResult, snapshot = createSnapshot()) {
+  const input = createModelInput(snapshot);
   const client = new MockReviewModelClient();
 
   return client.generateReview({
@@ -206,7 +243,17 @@ async function generateMockReport(staticAnalysis: StaticAnalysisResult) {
   });
 }
 
-function createSnapshot(): PullRequestSnapshot {
+function createSnapshot(overrides: Partial<PullRequestSnapshot["changedFiles"][number]> = {}): PullRequestSnapshot {
+  const changedFile: PullRequestSnapshot["changedFiles"][number] = {
+    path: "src/widget.ts",
+    status: "modified",
+    additions: 25,
+    deletions: 5,
+    changes: 30,
+    patch: "@@ -40,0 +41,1 @@\n+console.log(value)",
+    ...overrides
+  };
+
   return {
     id: "42",
     taskId: "task_123",
@@ -221,21 +268,11 @@ function createSnapshot(): PullRequestSnapshot {
     baseSha: "abc123456789",
     headRef: "feature/widgets",
     commitSha: "def123456789",
-    changedFiles: [
-      {
-        path: "src/widget.ts",
-        status: "modified",
-        additions: 25,
-        deletions: 5,
-        changes: 30,
-        patch: "@@ -40,0 +41,1 @@\n+console.log(value)"
-      }
-    ]
+    changedFiles: [changedFile]
   };
 }
 
-function createModelInput() {
-  const snapshot = createSnapshot();
+function createModelInput(snapshot = createSnapshot()) {
   const riskAssessment = assessPullRequestRisk(snapshot);
   const summary = generatePullRequestSummary(snapshot, riskAssessment);
   const reviewContext = buildPullRequestReviewContext(snapshot);

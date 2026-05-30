@@ -430,7 +430,7 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
       riskHints: [
         "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
         "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
-        "LOW context-many-any in src/services/review-engine.ts: 相关上下文存在较多 any，需人工确认。",
+        "LOW [context_only / 需要人工确认] context-many-any in src/services/review-engine.ts: 相关上下文存在较多 any，需人工确认。",
         "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
       ]
     },
