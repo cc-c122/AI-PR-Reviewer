@@ -5,6 +5,7 @@
 ## Live Demo
 
 [立即体验 GitHub Pages Demo](https://cc-c122.github.io/AI-PR-Reviewer/)
+[▶ 查看本地完整链路演示视频](【Ai分析pr】https://www.bilibili.com/video/BV1nHVV6kECg?vd_source=7ae61af4d663f15bab249db22b6cde34)
 
 GitHub Pages Demo 是静态演示模式：
 
