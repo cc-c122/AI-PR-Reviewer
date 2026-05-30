@@ -146,12 +146,14 @@ function createSignal(
   confidence: number,
   line?: number,
 ): StaticAnalysisSignal {
+  const effectiveSeverity = normalizeContextOnlySeverity(source, severity);
+
   return {
     id: `${file.path}:${ruleId}`,
     filePath: file.path,
     ruleId,
     category,
-    severity,
+    severity: effectiveSeverity,
     source,
     needsHumanConfirmation,
     message,
@@ -162,13 +164,28 @@ function createSignal(
 }
 
 function buildRiskHints(signals: StaticAnalysisSignal[], skippedFiles: SkippedStaticAnalysisFile[]): string[] {
-  const hints = signals.map((signal) => `${signal.severity.toUpperCase()} ${signal.ruleId} in ${signal.filePath}: ${signal.message}`);
+  const hints = signals.map((signal) => {
+    const sourceLabel = signal.source === contextOnlySource ? " [context_only / 需要人工确认]" : "";
+
+    return `${signal.severity.toUpperCase()}${sourceLabel} ${signal.ruleId} in ${signal.filePath}: ${signal.message}`;
+  });
 
   if (skippedFiles.length > 0) {
     hints.push(`Skipped ${skippedFiles.length} generated/lock/build file(s) to reduce noise.`);
   }
 
   return hints;
+}
+
+function normalizeContextOnlySeverity(
+  source: StaticAnalysisSignal["source"],
+  severity: StaticSignalSeverity,
+): StaticSignalSeverity {
+  if (source === contextOnlySource && severity === "high") {
+    return "medium";
+  }
+
+  return severity;
 }
 
 function getAnalyzableText(file: ReviewContextFile): string {
@@ -206,7 +223,7 @@ function findPatternMatch(
 
   return evidence
     ? {
-        evidence: `相关上下文存在该模式，需人工确认是否由本 PR 引入：${evidence}`,
+        evidence: `仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认：${evidence}`,
         confidence: contextConfidence,
         source: contextOnlySource,
         needsHumanConfirmation: true
@@ -216,7 +233,7 @@ function findPatternMatch(
 
 function withContextOnlyMessage(message: string, match: PatternMatch): string {
   return match.source === contextOnlySource
-    ? `${message} Related context contains this pattern; confirm whether the PR introduced it.`
+    ? `${message} 仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。`
     : message;
 }
 

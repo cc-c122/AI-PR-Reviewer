@@ -65,6 +65,48 @@ describe("generateAnalysisReport", () => {
     );
   });
 
+  it("does not let context-only static analysis raise the core risk assessment", async () => {
+    const snapshot = createSnapshot();
+    const staticAnalysis = {
+      signals: [
+        {
+          id: "src/widget.ts:hardcoded-secret",
+          filePath: "src/widget.ts",
+          ruleId: "hardcoded-secret",
+          category: "security" as const,
+          severity: "medium" as const,
+          source: "context_only" as const,
+          needsHumanConfirmation: true,
+          message: "Possible hardcoded secret in related context.",
+          evidence: "仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
+          confidence: 0.45
+        }
+      ],
+      skippedFiles: [],
+      riskHints: [
+        "MEDIUM [context_only / 需要人工确认] hardcoded-secret in src/widget.ts: Possible hardcoded secret in related context."
+      ]
+    };
+
+    await generateAnalysisReport(
+      snapshot,
+      {
+        async generateReview(input) {
+          expect(input.riskAssessment.riskLevel).toBe("medium");
+          expect(input.staticAnalysis).toBe(staticAnalysis);
+
+          return {
+            summary: input.summary,
+            riskLevel: input.riskAssessment.riskLevel,
+            findings: []
+          };
+        }
+      },
+      undefined,
+      staticAnalysis,
+    );
+  });
+
   it("builds explainable details without persisting full file content", () => {
     const snapshot = createSnapshot();
     const details = buildAnalysisDetails(

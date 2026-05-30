@@ -32,7 +32,7 @@ describe("analyzeReviewContext", () => {
     expect(result.riskHints).toContain("Skipped 2 generated/lock/build file(s) to reduce noise.");
   });
 
-  it("detects security patterns", () => {
+  it("detects introduced security patterns with added-line locations", () => {
     const result = analyzeReviewContext(
       buildPullRequestReviewContext(
         createSnapshot([
@@ -55,6 +55,8 @@ describe("analyzeReviewContext", () => {
       filePath: "src/auth.ts",
       source: "introduced_by_pr",
       needsHumanConfirmation: false,
+      severity: "high",
+      confidence: 0.74,
       line: 10
     });
     expect(result.signals.find((signal) => signal.ruleId === "eval-usage")).toMatchObject({
@@ -62,6 +64,43 @@ describe("analyzeReviewContext", () => {
       needsHumanConfirmation: false,
       line: 11
     });
+  });
+
+  it("downgrades context-only security matches and risk hints", () => {
+    const result = analyzeReviewContext(
+      buildPullRequestReviewContext(
+        createSnapshot([
+          {
+            path: "src/auth.ts",
+            status: "modified",
+            additions: 1,
+            deletions: 0,
+            changes: 1,
+            patch: "@@ -1,0 +1,1 @@\n+export const authEnabled = true"
+          }
+        ]),
+        {
+          "src/auth.ts": 'const token = "old-super-secret-token";'
+        },
+      ),
+    );
+
+    const signal = result.signals.find((item) => item.ruleId === "hardcoded-secret");
+
+    expect(signal).toMatchObject({
+      filePath: "src/auth.ts",
+      source: "context_only",
+      needsHumanConfirmation: true,
+      severity: "medium",
+      confidence: 0.45
+    });
+    expect(signal?.line).toBeUndefined();
+    expect(signal?.message).toContain("仅在相关上下文中发现");
+    expect(signal?.evidence).toContain("无法确认由本 PR 引入，需要人工确认");
+    expect(result.riskHints.some((hint) => hint.startsWith("HIGH"))).toBe(false);
+    expect(result.riskHints).toContain(
+      "MEDIUM [context_only / 需要人工确认] hardcoded-secret in src/auth.ts: Possible hardcoded token/password/secret pattern. 仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
+    );
   });
 
   it("adds line numbers to maintainability signals when they match added lines", () => {
@@ -84,11 +123,12 @@ describe("analyzeReviewContext", () => {
       filePath: "src/foo.ts",
       source: "introduced_by_pr",
       needsHumanConfirmation: false,
+      severity: "low",
       line: 41
     });
   });
 
-  it("downgrades fallback matches from file content to context-only signals", () => {
+  it("downgrades fallback maintainability matches from file content to context-only signals", () => {
     const result = analyzeReviewContext(
       buildPullRequestReviewContext(
         createSnapshot([
@@ -111,6 +151,7 @@ describe("analyzeReviewContext", () => {
       filePath: "src/foo.ts",
       source: "context_only",
       needsHumanConfirmation: true,
+      severity: "low",
       confidence: 0.38
     });
     expect(result.signals.find((signal) => signal.ruleId === "console-log")?.line).toBeUndefined();
@@ -135,6 +176,7 @@ describe("analyzeReviewContext", () => {
     expect(result.signals.find((signal) => signal.ruleId === "many-any")).toMatchObject({
       source: "introduced_by_pr",
       needsHumanConfirmation: false,
+      severity: "medium",
       confidence: 0.65,
       evidence: "新增行中出现 3 个 any。"
     });
@@ -163,6 +205,7 @@ describe("analyzeReviewContext", () => {
     expect(result.signals.find((signal) => signal.ruleId === "context-many-any")).toMatchObject({
       source: "context_only",
       needsHumanConfirmation: true,
+      severity: "low",
       confidence: 0.35,
       evidence: "相关文件上下文中存在 6 个 any，需确认是否与本 PR 相关。"
     });
