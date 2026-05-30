@@ -84,7 +84,7 @@ describe("generateAnalysisReport", () => {
       ],
       skippedFiles: [],
       riskHints: [
-        "中 [context_only / 需要人工确认] hardcoded-secret（src/widget.ts）：相关上下文中可能存在硬编码密钥。"
+        "中 [仅上下文发现 / 需要人工确认] hardcoded-secret（src/widget.ts）：相关上下文中可能存在硬编码密钥。"
       ]
     };
 

@@ -29,7 +29,7 @@ describe("analyzeReviewContext", () => {
       { filePath: "dist/app.min.js", reason: "build_artifact" },
       { filePath: "pnpm-lock.yaml", reason: "lockfile" }
     ]);
-    expect(result.riskHints).toContain("已跳过 2 个 generated/lock/build 文件，以减少噪声。");
+    expect(result.riskHints).toContain("已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。");
   });
 
   it("detects introduced security patterns with added-line locations", () => {
@@ -99,7 +99,7 @@ describe("analyzeReviewContext", () => {
     expect(signal?.evidence).toContain("无法确认由本 PR 引入，需要人工确认");
     expect(result.riskHints.some((hint) => hint.startsWith("HIGH"))).toBe(false);
     expect(result.riskHints).toContain(
-      "中 [context_only / 需要人工确认] hardcoded-secret（src/auth.ts）：可能存在硬编码 token、password、secret 或 API key。 仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
+      "中 [仅上下文发现 / 需要人工确认] hardcoded-secret（src/auth.ts）：可能存在硬编码 token、password、secret 或 API key。 仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
     );
   });
 

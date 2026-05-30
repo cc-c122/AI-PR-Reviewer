@@ -165,13 +165,13 @@ function createSignal(
 
 function buildRiskHints(signals: StaticAnalysisSignal[], skippedFiles: SkippedStaticAnalysisFile[]): string[] {
   const hints = signals.map((signal) => {
-    const sourceLabel = signal.source === contextOnlySource ? " [context_only / 需要人工确认]" : "";
+    const sourceLabel = signal.source === contextOnlySource ? " [仅上下文发现 / 需要人工确认]" : "";
 
     return `${formatSeverityLabel(signal.severity)}${sourceLabel} ${signal.ruleId}（${signal.filePath}）：${signal.message}`;
   });
 
   if (skippedFiles.length > 0) {
-    hints.push(`已跳过 ${skippedFiles.length} 个 generated/lock/build 文件，以减少噪声。`);
+    hints.push(`已跳过 ${skippedFiles.length} 个生成文件、锁文件或构建产物，以减少噪声。`);
   }
 
   return hints;
