@@ -38,13 +38,13 @@ describe("generateAnalysisReport", () => {
           severity: "low" as const,
           source: "introduced_by_pr" as const,
           needsHumanConfirmation: false,
-          message: "console.log detected.",
+          message: "变更上下文中检测到 console.log 调试输出。",
           evidence: "console.log(value)",
           confidence: 0.62
         }
       ],
       skippedFiles: [],
-      riskHints: ["LOW console-log in src/widget.ts: console.log detected."]
+      riskHints: ["低 console-log（src/widget.ts）：变更上下文中检测到 console.log 调试输出。"]
     };
 
     await generateAnalysisReport(
@@ -77,14 +77,14 @@ describe("generateAnalysisReport", () => {
           severity: "medium" as const,
           source: "context_only" as const,
           needsHumanConfirmation: true,
-          message: "Possible hardcoded secret in related context.",
+          message: "相关上下文中可能存在硬编码密钥。",
           evidence: "仅在相关上下文中发现，无法确认由本 PR 引入，需要人工确认。",
           confidence: 0.45
         }
       ],
       skippedFiles: [],
       riskHints: [
-        "MEDIUM [context_only / 需要人工确认] hardcoded-secret in src/widget.ts: Possible hardcoded secret in related context."
+        "中 [context_only / 需要人工确认] hardcoded-secret（src/widget.ts）：相关上下文中可能存在硬编码密钥。"
       ]
     };
 
@@ -140,7 +140,7 @@ describe("generateAnalysisReport", () => {
               {
                 type: "file_content",
                 filePath: "src/widget.ts",
-                description: "Repository file content at PR head commit, truncated by size limit."
+                description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
               }
             ]
           }
@@ -148,7 +148,7 @@ describe("generateAnalysisReport", () => {
         contextSources: [
           {
             type: "metadata",
-            description: "Pull request metadata from GitHub."
+            description: "来自 GitHub 的 Pull Request 元数据。"
           }
         ]
       },
@@ -162,7 +162,7 @@ describe("generateAnalysisReport", () => {
             severity: "high",
             source: "introduced_by_pr",
             needsHumanConfirmation: false,
-            message: "Possible hardcoded token/password/secret pattern.",
+            message: "可能存在硬编码 token、password、secret 或 API key。",
             evidence: "const token = \"super-secret-value\";",
             confidence: 0.74
           }
@@ -179,7 +179,7 @@ describe("generateAnalysisReport", () => {
         {
           type: "file_content",
           filePath: "src/widget.ts",
-          description: "Repository file content at PR head commit, truncated by size limit."
+          description: "PR head commit 上的仓库文件内容，因大小限制已截断。"
         }
       ],
       contentAvailable: true,

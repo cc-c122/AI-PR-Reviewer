@@ -21,7 +21,7 @@ export class MockReviewModelClient implements ReviewModelClient {
     ].map((finding) => reviewFindingSchema.parse(finding));
 
     return modelReviewOutputSchema.parse({
-      summary: `Mock Review：${input.summary}`,
+      summary: `模拟评审：${input.summary}`,
       riskLevel: input.riskAssessment.riskLevel,
       findings
     });
@@ -35,7 +35,7 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
   const file = input.snapshot.changedFiles.find((changedFile) => changedFile.path === contextFile?.path) ?? input.snapshot.changedFiles[0];
   const evidenceDetail = contextFile
     ? describeContextAvailability(contextFile)
-    : "Review 上下文中没有变更文件。";
+    : "评审上下文中没有变更文件。";
   const staticSignalEvidence = describeStaticSignals(input, file?.path);
   const line = findSuggestedLine(input, file?.path);
   const hasContextOnlySignal = hasContextOnlySignals(input, file?.path);
@@ -50,7 +50,7 @@ function createBugFinding(input: ReviewModelInput): ReviewFinding {
     ...(line !== undefined ? { line } : {}),
     title: "检查变更逻辑的边界场景",
     evidence: file
-      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}${hasContextOnlySignal ? "其中 context_only 信号只表示相关上下文存在风险模式，需要人工确认是否由本 PR 引入。" : ""}`
+      ? `${file.path} 变更 ${file.changes} 行，可能影响运行时行为。${evidenceDetail}${staticSignalEvidence}${hasContextOnlySignal ? "其中“仅上下文发现”的信号只表示相关上下文存在风险模式，需要人工确认是否由本 PR 引入。" : ""}`
       : "PR 快照中没有变更文件。",
     suggestion: "请人工确认变更逻辑周围的边界条件、空值处理和失败路径。",
     confidence: hasOnlyContextOnlySignal ? 0.48 : file ? 0.58 : 0.35,
@@ -80,7 +80,7 @@ function createTestFinding(input: ReviewModelInput): ReviewFinding {
     evidence: hasTestChanges
       ? `本次 PR 变更了 ${input.riskAssessment.testFileCount} 个测试文件。`
       : missingTestSignal
-        ? `静态分析信号 ${missingTestSignal.ruleId}（${missingTestSignal.source}）：${missingTestSignal.evidence}`
+        ? `静态分析信号 ${missingTestSignal.ruleId}（${formatSignalSource(missingTestSignal.source)}）：${missingTestSignal.evidence}`
         : contextFile && contextFile.testCandidatePaths.length > 0
           ? `未检测到测试文件变更。候选相关测试包括 ${contextFile.testCandidatePaths.slice(0, 3).join(", ")}。`
           : "源代码变更旁未检测到测试文件变更。",
@@ -147,7 +147,7 @@ function describeContextAvailability(file: {
     sources.push(file.contentTruncated ? "截断后的文件内容可用" : "文件内容可用");
   }
 
-  return sources.length > 0 ? `Review 上下文：${sources.join("；")}。` : "Review 上下文仅包含文件元数据。";
+  return sources.length > 0 ? `评审上下文：${sources.join("；")}。` : "评审上下文仅包含文件元数据。";
 }
 
 function describeStaticSignals(input: ReviewModelInput, filePath: string | undefined): string {
@@ -163,8 +163,27 @@ function describeStaticSignals(input: ReviewModelInput, filePath: string | undef
 
   return ` 静态分析信号：${signals.map((signal) => {
     const confirmation = signal.needsHumanConfirmation ? "，需要人工确认" : "";
-    return `${signal.ruleId}（${signal.severity}，${signal.source}，${signal.confidence}${confirmation}）`;
+    return `${signal.ruleId}（${formatSignalSeverity(signal.severity)}，${formatSignalSource(signal.source)}，置信度 ${Math.round(signal.confidence * 100)}%${confirmation}）`;
   }).join("；")}。`;
+}
+
+function formatSignalSeverity(severity: "high" | "medium" | "low"): string {
+  const labels = {
+    high: "高",
+    medium: "中",
+    low: "低"
+  } as const;
+
+  return labels[severity];
+}
+
+function formatSignalSource(source: "introduced_by_pr" | "context_only"): string {
+  const labels = {
+    introduced_by_pr: "本 PR 引入",
+    context_only: "仅上下文发现"
+  } as const;
+
+  return labels[source];
 }
 
 function hasContextOnlySignals(input: ReviewModelInput, filePath: string | undefined): boolean {

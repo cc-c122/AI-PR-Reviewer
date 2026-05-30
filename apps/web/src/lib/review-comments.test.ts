@@ -5,7 +5,7 @@ import { formatFindingComment, formatReviewSummary } from "./review-comments";
 describe("review comment formatting", () => {
   it("formats a finding as a GitHub review comment draft", () => {
     expect(formatFindingComment(createFinding())).toContain("### 检查空值处理");
-    expect(formatFindingComment(createFinding())).toContain("**严重级别 / 类型:** major / bug");
+    expect(formatFindingComment(createFinding())).toContain("**严重程度 / 类型:** 主要 / 缺陷");
     expect(formatFindingComment(createFinding())).toContain("**位置:** `src/widget.ts:42`");
     expect(formatFindingComment(createFinding())).toContain("**置信度:** 82%");
     expect(formatFindingComment(createFinding())).toContain("**是否阻塞:** 是");
@@ -46,10 +46,10 @@ describe("review comment formatting", () => {
 
     const summary = formatReviewSummary(report, task);
 
-    expect(summary).toContain("AI PR Review 摘要：acme/widgets#7");
+    expect(summary).toContain("AI PR 评审摘要：acme/widgets#7");
     expect(summary).toContain("https://github.com/acme/widgets/pull/7");
     expect(summary).toContain("阻塞问题:** 1");
-    expect(summary).toContain("[major/bug/阻塞] src/widget.ts: 检查空值处理");
+    expect(summary).toContain("[主要/缺陷/阻塞] src/widget.ts: 检查空值处理");
   });
 });
 

@@ -42,7 +42,7 @@ export function analyzeReviewContext(reviewContext: PullRequestReviewContext): S
     }
 
     if (file.changes >= largeChangeThreshold) {
-      signals.push(createSignal(file, "large-change", "size", "medium", introducedByPrSource, false, `Large file-level change: ${file.changes} lines changed.`, `${file.path} changed ${file.changes} line(s).`, 0.72));
+      signals.push(createSignal(file, "large-change", "size", "medium", introducedByPrSource, false, `文件级变更较大，建议优先评审。`, `${file.path} 本次变更 ${file.changes} 行。`, 0.72));
     }
 
     if (!hasTestChange && !file.isTestFile && file.testCandidatePaths.length > 0) {
@@ -54,8 +54,8 @@ export function analyzeReviewContext(reviewContext: PullRequestReviewContext): S
           "medium",
           introducedByPrSource,
           false,
-          "Source change has no changed test file in this PR.",
-          `Candidate related tests: ${file.testCandidatePaths.slice(0, 3).join(", ")}.`,
+          "本次 PR 修改了源代码，但没有检测到测试文件变更。",
+          `候选相关测试：${file.testCandidatePaths.slice(0, 3).join(", ")}。`,
           0.68,
         ),
       );
@@ -79,17 +79,17 @@ function scanSecurityPatterns(file: ReviewContextFile): StaticAnalysisSignal[] {
     {
       ruleId: "hardcoded-secret",
       pattern: /\b(token|password|secret|api[_-]?key)\b\s*[:=]\s*["'][^"']{8,}["']/iu,
-      message: "Possible hardcoded token/password/secret pattern."
+      message: "可能存在硬编码 token、password、secret 或 API key。"
     },
     {
       ruleId: "eval-usage",
       pattern: /\beval\s*\(/u,
-      message: "Use of eval-like dynamic code execution."
+      message: "检测到 eval 动态代码执行模式。"
     },
     {
       ruleId: "dangerous-html",
       pattern: /dangerouslySetInnerHTML|\.innerHTML\s*=/u,
-      message: "Potentially unsafe HTML injection sink."
+      message: "检测到潜在不安全的 HTML 注入入口。"
     }
   ];
 
@@ -118,17 +118,17 @@ function scanMaintainabilityPatterns(file: ReviewContextFile): StaticAnalysisSig
   const contextAnyCount = countMatches(text, /\bany\b/gu);
 
   if (addedAnyCount >= 3) {
-    signals.push(createSignal(file, "many-any", "maintainability", "medium", introducedByPrSource, false, "Many TypeScript any usages detected in added lines.", `新增行中出现 ${addedAnyCount} 个 any。`, 0.65));
+    signals.push(createSignal(file, "many-any", "maintainability", "medium", introducedByPrSource, false, "新增行中出现较多 TypeScript any。", `新增行中出现 ${addedAnyCount} 个 any。`, 0.65));
   } else if (contextAnyCount >= 5) {
-    signals.push(createSignal(file, "context-many-any", "maintainability", "low", contextOnlySource, true, "Related file context contains many TypeScript any usages.", `相关文件上下文中存在 ${contextAnyCount} 个 any，需确认是否与本 PR 相关。`, 0.35));
+    signals.push(createSignal(file, "context-many-any", "maintainability", "low", contextOnlySource, true, "相关文件上下文中存在较多 TypeScript any，需要人工确认是否与本 PR 相关。", `相关文件上下文中存在 ${contextAnyCount} 个 any，需确认是否与本 PR 相关。`, 0.35));
   }
 
   if (todoMatch) {
-    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", todoMatch.source, todoMatch.needsHumanConfirmation, withContextOnlyMessage("TODO/FIXME marker detected in changed context.", todoMatch), todoMatch.evidence, todoMatch.confidence, todoMatch.line));
+    signals.push(createSignal(file, "todo-fixme", "maintainability", "low", todoMatch.source, todoMatch.needsHumanConfirmation, withContextOnlyMessage("变更上下文中检测到 TODO/FIXME 标记。", todoMatch), todoMatch.evidence, todoMatch.confidence, todoMatch.line));
   }
 
   if (consoleMatch) {
-    signals.push(createSignal(file, "console-log", "maintainability", "low", consoleMatch.source, consoleMatch.needsHumanConfirmation, withContextOnlyMessage("console.log detected in changed context.", consoleMatch), consoleMatch.evidence, consoleMatch.confidence, consoleMatch.line));
+    signals.push(createSignal(file, "console-log", "maintainability", "low", consoleMatch.source, consoleMatch.needsHumanConfirmation, withContextOnlyMessage("变更上下文中检测到 console.log 调试输出。", consoleMatch), consoleMatch.evidence, consoleMatch.confidence, consoleMatch.line));
   }
 
   return signals;
@@ -167,14 +167,24 @@ function buildRiskHints(signals: StaticAnalysisSignal[], skippedFiles: SkippedSt
   const hints = signals.map((signal) => {
     const sourceLabel = signal.source === contextOnlySource ? " [context_only / 需要人工确认]" : "";
 
-    return `${signal.severity.toUpperCase()}${sourceLabel} ${signal.ruleId} in ${signal.filePath}: ${signal.message}`;
+    return `${formatSeverityLabel(signal.severity)}${sourceLabel} ${signal.ruleId}（${signal.filePath}）：${signal.message}`;
   });
 
   if (skippedFiles.length > 0) {
-    hints.push(`Skipped ${skippedFiles.length} generated/lock/build file(s) to reduce noise.`);
+    hints.push(`已跳过 ${skippedFiles.length} 个 generated/lock/build 文件，以减少噪声。`);
   }
 
   return hints;
+}
+
+function formatSeverityLabel(severity: StaticSignalSeverity): string {
+  const labels = {
+    high: "高",
+    medium: "中",
+    low: "低"
+  } satisfies Record<StaticSignalSeverity, string>;
+
+  return labels[severity];
 }
 
 function normalizeContextOnlySeverity(

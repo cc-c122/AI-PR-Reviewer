@@ -138,7 +138,7 @@ export async function getAnalysisReport(taskId: string): Promise<AnalysisReport>
     const demo = getDemoAnalysis(taskId);
 
     if (!demo) {
-      throw new Error("Demo analysis task was not found.");
+      throw new Error("未找到 Demo 分析任务。");
     }
 
     return demo.report;
@@ -205,7 +205,7 @@ function createDemoAnalysis(pullRequestUrl: string): AnalysisResult {
     ]
   };
   const report: AnalysisReport = {
-    summary: `${reference.owner}/${reference.repo}#${reference.pullRequestNumber}: 这是 Demo 报告。当前静态 GitHub Pages 构建会展示 Review 工作流，但不会调用 GitHub、API 服务或 AI 模型。`,
+    summary: `${reference.owner}/${reference.repo}#${reference.pullRequestNumber}: 这是 Demo 报告。当前静态 GitHub Pages 构建会展示评审工作流，但不会调用 GitHub、API 服务或 AI 模型。`,
     riskLevel: "medium",
     findings: [
       {
@@ -374,7 +374,7 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
           severity: "medium",
           source: "introduced_by_pr",
           needsHumanConfirmation: false,
-          message: "检测到 review 编排中的服务级大改动。",
+          message: "检测到评审编排中的服务级大改动。",
           evidence: "src/services/review-engine.ts 变更 110 行。",
           confidence: 0.72
         },
@@ -428,9 +428,9 @@ function createDemoDetails(taskId: string, generatedAt: string): NonNullable<Ana
         }
       ],
       riskHints: [
-        "MEDIUM large-change in src/services/review-engine.ts: 检测到 review 编排中的服务级大改动。",
-        "LOW console-log in src/services/review-engine.ts: 在变更上下文中检测到调试日志模式。",
-        "LOW [context_only / 需要人工确认] context-many-any in src/services/review-engine.ts: 相关上下文存在较多 any，需人工确认。",
+        "中 large-change（src/services/review-engine.ts）：检测到评审编排中的服务级大改动。",
+        "低 console-log（src/services/review-engine.ts）：在变更上下文中检测到调试日志模式。",
+        "低 [context_only / 需要人工确认] context-many-any（src/services/review-engine.ts）：相关上下文存在较多 any，需人工确认。",
         "已跳过 2 个生成文件、锁文件或构建产物，以减少噪声。"
       ]
     },
@@ -443,13 +443,13 @@ function parseDemoPullRequestUrl(value: string) {
   const [owner, repo, resource, pullRequestNumber] = url.pathname.split("/").filter(Boolean);
 
   if (url.protocol !== "https:" || url.hostname !== "github.com" || resource !== "pull" || !owner || !repo) {
-    throw new Error("Demo mode accepts GitHub PR URLs like https://github.com/org/repo/pull/123.");
+    throw new Error("Demo 模式只接受形如 https://github.com/org/repo/pull/123 的 GitHub PR URL。");
   }
 
   const parsedPullRequestNumber = Number(pullRequestNumber);
 
   if (!Number.isInteger(parsedPullRequestNumber) || parsedPullRequestNumber <= 0) {
-    throw new Error("Demo mode requires a numeric pull request number.");
+    throw new Error("Demo 模式需要数字形式的 Pull Request 编号。");
   }
 
   return {
@@ -465,7 +465,7 @@ async function request<T>(path: string, schema: z.Schema<T>, init?: RequestInit)
 
   if (!response.ok) {
     const error = apiErrorSchema.safeParse(payload);
-    throw new Error(error.success ? error.data.message : `Request failed with status ${response.status}.`);
+    throw new Error(error.success ? error.data.message : `请求失败，状态码 ${response.status}。`);
   }
 
   return schema.parse(payload);
@@ -481,6 +481,6 @@ async function parseResponse(response: Response): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    throw new Error("The API returned an invalid JSON response.");
+    throw new Error("API 返回了无效的 JSON。");
   }
 }

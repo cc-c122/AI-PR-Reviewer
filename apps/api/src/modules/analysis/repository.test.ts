@@ -44,7 +44,7 @@ describe("mapAnalysisTaskRecord", () => {
       report: {
         id: "report_123",
         taskId: "task_123",
-        summary: "Widget review summary.",
+        summary: "Widget 评审摘要。",
         riskLevel: "medium",
         findings: [
           {
@@ -53,9 +53,9 @@ describe("mapAnalysisTaskRecord", () => {
             severity: "major",
             category: "bug",
             filePath: "src/widget.ts",
-            title: "Review widget edge cases",
-            evidence: "src/widget.ts changed 30 line(s).",
-            suggestion: "Check boundary conditions.",
+            title: "检查 widget 边界场景",
+            evidence: "src/widget.ts 变更 30 行。",
+            suggestion: "请检查边界条件。",
             confidence: 0.78,
             blocking: true,
             status: "open"
@@ -100,7 +100,7 @@ describe("mapAnalysisTaskRecord", () => {
         ]
       },
       report: {
-        summary: "Widget review summary.",
+        summary: "Widget 评审摘要。",
         riskLevel: "medium",
         findings: [
           {
@@ -109,9 +109,9 @@ describe("mapAnalysisTaskRecord", () => {
             severity: "major",
             category: "bug",
             filePath: "src/widget.ts",
-            title: "Review widget edge cases",
-            evidence: "src/widget.ts changed 30 line(s).",
-            suggestion: "Check boundary conditions.",
+            title: "检查 widget 边界场景",
+            evidence: "src/widget.ts 变更 30 行。",
+            suggestion: "请检查边界条件。",
             confidence: 0.78,
             blocking: true,
             status: "open"
@@ -133,7 +133,7 @@ describe("mapAnalysisTaskRecord", () => {
               {
                 type: "file_content",
                 filePath: "src/widget.ts",
-                description: "Repository file content at PR head commit."
+                description: "PR head commit 上的仓库文件内容。"
               }
             ],
             contentAvailable: true,
@@ -145,7 +145,7 @@ describe("mapAnalysisTaskRecord", () => {
         contextSources: [
           {
             type: "metadata",
-            description: "Pull request metadata from GitHub."
+            description: "来自 GitHub 的 Pull Request 元数据。"
           }
         ]
       },
@@ -159,13 +159,13 @@ describe("mapAnalysisTaskRecord", () => {
             severity: "low",
             source: "introduced_by_pr",
             needsHumanConfirmation: false,
-            message: "console.log detected.",
+            message: "变更上下文中检测到 console.log 调试输出。",
             evidence: "console.log(value)",
             confidence: 0.62
           }
         ],
         skippedFiles: [],
-        riskHints: ["LOW console-log in src/widget.ts: console.log detected."]
+        riskHints: ["低 console-log（src/widget.ts）：变更上下文中检测到 console.log 调试输出。"]
       },
       generatedAt
     });
